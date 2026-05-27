@@ -19,6 +19,9 @@
     <Filter Include="Source Files\Core">
       <UniqueIdentifier>{6a257945-d851-4fb0-bd2c-d821b2d86b9f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\ECS">
+      <UniqueIdentifier>{19801cb9-657e-47c6-88a1-f4ff9bb2fb13}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\main.cpp">
@@ -40,6 +43,12 @@
     </ClInclude>
     <ClInclude Include="include\Core\CShape.h">
       <Filter>Header Files\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ECS\Types.h">
+      <Filter>Header Files\ECS</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ECS\SparseSet.h">
+      <Filter>Header Files\ECS</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
