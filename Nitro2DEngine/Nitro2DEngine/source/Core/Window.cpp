@@ -86,6 +86,17 @@ Window::render() {
 	//Render all the drawables
 }
 
+std::optional<sf::Event>
+Window::pollEvent()
+{
+	if (m_window) 
+	{
+		return m_window->pollEvent();
+	}
+
+	return std::nullopt;
+}
+
 void
 Window::destroy() {
 	m_window.reset();

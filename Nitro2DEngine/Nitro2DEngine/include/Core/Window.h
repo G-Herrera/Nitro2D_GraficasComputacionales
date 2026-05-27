@@ -37,7 +37,10 @@ public:
 	void
 	destroy();
 
-	std::unique_ptr<sf::RenderWindow> m_window;
+	std::optional<sf::Event>
+	pollEvent();
+
+	std::unique_ptr<sf::RenderWindow> m_window = nullptr;
 private:
 	sf::View m_view;
 	sf::Time m_deltaTime;
