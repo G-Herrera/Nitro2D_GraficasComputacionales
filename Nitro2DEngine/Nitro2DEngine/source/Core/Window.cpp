@@ -1,7 +1,7 @@
 #include "Core/Window.h"
 
 Window::Window(int width, int height, const std::string& title) {
-	m_window = new sf::RenderWindow(sf::VideoMode({ static_cast<unsigned int>(width),
+	m_window = std::make_unique<sf::RenderWindow>(sf::VideoMode({ static_cast<unsigned int>(width),
 																	static_cast<unsigned int>(height) }), 
 																	title, sf::Style::Default);
 
@@ -15,9 +15,7 @@ Window::Window(int width, int height, const std::string& title) {
 	}
 }
 
-Window::~Window() {
-	SAFE_PTR_RELEASE(m_window);
-}
+Window::~Window() = default;
 
 bool
 Window::isOpen() const {
@@ -90,5 +88,5 @@ Window::render() {
 
 void
 Window::destroy() {
-	SAFE_PTR_RELEASE(m_window);
+	m_window.reset();
 }
