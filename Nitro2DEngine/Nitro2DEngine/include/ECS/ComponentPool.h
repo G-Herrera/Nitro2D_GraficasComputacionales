@@ -16,9 +16,9 @@
 namespace ECS{
 	//Interfaz polimórfica sin tipo
 	class 
-	IComponenetPool : public SparseSet {
+	IComponentPool : public SparseSet {
 	public:
-		~IComponenetPool() = default;
+		~IComponentPool() = default;
 
 		//Elimina el componente de la entidad si existe
 		virtual void 
@@ -99,6 +99,12 @@ namespace ECS{
 
 		[[nodiscard]] const std::vector<T>&
 		GetComponents() const noexcept { return m_components; }
+
+		void 
+		Clear() override {
+			m_components.clear();
+			SparseSet::Clear();
+		}
 
 
 	private:
