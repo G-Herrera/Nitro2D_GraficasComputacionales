@@ -1,10 +1,23 @@
 #include "Core/CShape.h"
 #include "Core/Window.h"
 
+/**
+	* @brief Implementación de la clase CShape que representa una forma gráfica en el motor Nitro 2D Engine.
+	* @details La clase CShape es una envoltura para las formas gráficas proporcionadas por la biblioteca SFML.
+	*/
+
+/**
+	* @brief Constructor de la clase CShape que recibe un tipo de forma como parámetro.
+	* @param shapeType El tipo de forma que se desea crear (CIRCLE, RECTANGLE, TRIANGLE, POLYGON, LINE).
+	*/
 CShape::CShape(ShapeType shapeType) : m_shapeType(shapeType), m_shape(createShape(shapeType)) {
 
 }
 
+/**
+	* @brief Método para dibujar la forma en la ventana.
+	* @param window La ventana donde se desea dibujar la forma.
+	*/ 
 void 
 CShape::draw(Window& window) {
 	if (m_shape) {
@@ -12,11 +25,39 @@ CShape::draw(Window& window) {
 	}
 }
 
+/**
+ * @brief Obtiene un puntero a la figura gráfica asociada al objeto.
+ *
+ * Devuelve el puntero gestionado internamente por `m_shape` sin transferir
+ * la propiedad del recurso.
+ *
+ * @return Puntero a la instancia de `sf::Shape` almacenada, o `nullptr`
+ *         si no existe ninguna figura asociada.
+ */
 sf::Shape* 
 CShape::getShape() {
 	return m_shape.get();
 }
 
+/**
+ * @brief Crea una figura SFML según el tipo especificado.
+ *
+ * Genera dinámicamente una figura de SFML configurada con valores
+ * predeterminados de tamaño, color y posición. La propiedad del objeto
+ * creado se devuelve mediante un `std::unique_ptr`.
+ *
+ * Tipos soportados:
+ * - EMPTY: no crea ninguna figura.
+ * - CIRCLE: crea un círculo.
+ * - RECTANGLE: crea un rectángulo.
+ * - TRIANGLE: crea un triángulo mediante `sf::ConvexShape`.
+ * - POLYGON: crea un polígono de cinco lados mediante `sf::ConvexShape`.
+ * - LINE: crea una línea representada como un rectángulo delgado.
+ *
+ * @param shapeType Tipo de figura a crear.
+ * @return `std::unique_ptr<sf::Shape>` que contiene la figura creada.
+ *         Devuelve `nullptr` si el tipo es `EMPTY` o no es válido.
+ */
 std::unique_ptr<sf::Shape> CShape::createShape(ShapeType shapeType) {
 	switch (shapeType) {
 		case EMPTY:

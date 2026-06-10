@@ -22,7 +22,7 @@ CShape Circle(ShapeType::CIRCLE);
 int main()
 {
   // create the window
-	Window window(800, 600, "Nitro 2D Engine");
+  Window window(800, 600, "Nitro 2D Engine");
   //sf::RenderWindow window(sf::VideoMode({ 800, 600 }), "Nitro 2D Engine");
 
 	// set the shape's color to green
