@@ -1,17 +1,32 @@
 #pragma once
 #include "ECS/ComponentPool.h"
 
+/*
+* @brief Clase que representa una vista de componentes en el sistema ECS.
+* @details La clase View permite iterar sobre entidades que tienen un conjunto específico de componentes.
+* @tparam Components Los tipos de componentes que se incluirán en la vista.
+*/
+
 namespace ECS {
 	template<typename... Components>
 	class View
 	{
 	public:
+		/**
+		* @brief Constructor de la clase View.
+		* @param pools Las pools de componentes que se utilizarán en la vista.
+		*/
 		explicit View(ComponentPool<Components>&... pools) noexcept : m_pools(pools ...) {
 			FindSmallest();
 		}
 
 		//Iteración principal
 			//Callback con referencia a cada componente
+
+		/**
+		* @brief Itera sobre cada entidad en la vista y aplica una función a sus componentes.
+		* @param func La función a aplicar a cada entidad y sus componentes.
+		*/
 		template<typename Func> 
 		void Each(Func&& func) {
 			if (!m_smallest) return; //No hay componenetes, no iteramos
@@ -31,6 +46,11 @@ namespace ECS {
 
 		//Iteración solo de entidades
 		 //Callback con referencia a cada componente
+
+		/*
+		* @brief Itera sobre cada entidad en la vista y aplica una función a sus componentes.
+		* @param func La función a aplicar a cada entidad y sus componentes.
+		*/
 		template<typename Func>
 		void EachEntity(Func&& func) {
 			if (!m_smallest) return; //No hay componenetes, no iteramos
@@ -44,9 +64,21 @@ namespace ECS {
 			}
 		}
 
+		/**
+		* @brief Verifica si la vista está vacía.
+		* @return true si la vista está vacía, false en caso contrario.
+		*/
 		[[nodiscard]] bool Empty() const noexcept { return !m_smallest || m_smallest->Empty(); }
+
+		/*
+		* @brief Devuelve el número de entidades en la vista.
+		* @return El número de entidades en la vista.
+		*/
 		[[nodiscard]] std::size_t Size() const noexcept {return m_smallest ? m_smallest->Size() : 0;}
 	private:
+		/**
+		* @brief Busca la pool de componentes más pequeña.
+		*/
 		template <std::size_t I = 0>
 		void FindSmallest() {
 			if constexpr (I < sizeof...(Components)) {
@@ -59,6 +91,11 @@ namespace ECS {
 			}
 		}
 
+		/**
+		* @brief Verifica si todos los pools de componentes contienen la entidad especificada.
+		* @param entity La ID de la entidad a verificar.
+		* @return true si todos los pools contienen la entidad, false en caso contrario.
+		*/
 		[[nodiscard]] bool 
 		AllHave(EntityID entity) const noexcept {
 			return std::apply
@@ -71,8 +108,8 @@ namespace ECS {
 		}
 
 	private:
-		std::tuple<ComponentPool<Components>&...> m_pools;
-		const SparseSet* m_smallest = nullptr;
+		std::tuple<ComponentPool<Components>&...> m_pools; ///< Las pools de componentes que se utilizarán en la vista.
+		const SparseSet* m_smallest = nullptr; ///< La pool de componentes más pequeña, utilizada para optimizar la iteración.
 
 	};
 

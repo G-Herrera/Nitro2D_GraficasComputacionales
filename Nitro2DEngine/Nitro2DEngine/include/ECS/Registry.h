@@ -4,6 +4,15 @@
 #include "ECS/Types.h"
 #include "ECS/System.h"
 
+/**
+	* @brief Clase que representa el sistema de entidades y componentes.
+	*
+	* Esta clase es responsable de gestionar la creación, destrucción y acceso a entidades y sus componentes.
+	* @note Esta clase no es thread-safe.
+	*
+	* Se recomienda utilizar esta clase en un contexto de un solo hilo o implementar mecanismos de bloqueo adecuados.
+	*/
+
 namespace ECS {
 	class
 		Registry {
@@ -11,6 +20,13 @@ namespace ECS {
 		Registry();
 		~Registry();
 
+
+		/**
+		 * @brief Crea una nueva entidad.
+		 *
+		 * Esta función asigna un nuevo ID de entidad y lo marca como activo.
+		 * @return El ID de la nueva entidad.
+		 */
 		EntityID
 			CreateEntity() {
 			EntityID idx;
@@ -29,6 +45,12 @@ namespace ECS {
 			return id;
 		};
 
+		/**
+		 * @brief Destruye una entidad.
+		 *
+		 * Esta función marca la entidad como inactiva y elimina todos sus componentes.
+		 * @param entity El ID de la entidad a destruir.
+		 */
 		void
 			DestroyEntity(EntityID entity) {
 			assert(IsAlive(entity) && "DestroyEntity: Entity no existe o ya fue destruida");
@@ -46,22 +68,53 @@ namespace ECS {
 		}
 
 		//Componentes
+
+		/**
+		 * @brief Verifica si una entidad está activa.
+		 *
+		 * Esta función comprueba si la entidad existe y está activa en el sistema.
+		 * @param entity El ID de la entidad a verificar.
+		 * @return true si la entidad está activa, false en caso contrario.
+		 */
 		[[nodiscard]] bool
 			IsAlive(EntityID entity) const noexcept {
 			const EntityID idx = GetEntityIndex(entity);
 			return idx < m_entities.size() && m_entities[idx] == entity;
 		}
 
+		/*
+		 * @brief Obtiene la cantidad de entidades activas en el sistema.
+		 *
+		 * Esta función cuenta todas las entidades que están activas y no han sido destruidas.
+		 * @return La cantidad de entidades activas.
+		 */
 		[[nodiscard]] std::size_t
 			EntityCount() const noexcept { return m_entities.size() - m_freeList.size(); }
 
 		//Todas las ranuras (incluye NULL_ENTITY para los huecos libres).
 		//Útil pra el Serializer; filtra con IsAlive() para iterar solo las entidades activas.
+
+		/*
+		 * @brief Obtiene todas las entidades en el sistema.
+		 *
+		 * Esta función devuelve un vector con todas las entidades, incluyendo
+		 * aquellas que han sido destruidas (NULL_ENTITY).
+		 * @return Un vector con todos los IDs de entidad.
+		 */
 		[[nodiscard]] const std::vector<EntityID>&
 			GetAllEntities() const noexcept { return m_entities; }
 
 		//Añade un componente a una entidad, creando el pool si no existe
 		//Acepta argumentos de construcción directos (perfect - forward)
+
+		/*
+		 * @brief Añade un componente a una entidad.
+		 *
+		 * Esta función crea un nuevo componente del tipo T y lo asocia a la entidad.
+		 * @param entity El ID de la entidad a la que se le añadirá el componente.
+		 * @param args Los argumentos de construcción para el componente.
+		 * @return Una referencia al componente recién creado.
+		 */
 		template<typename T, typename... Args> T&
 			AddComponent(EntityID entity, Args&&... args) {
 			assert(IsAlive(entity) && "AddComponent: Entity no existe o ya fue destruida");
@@ -69,6 +122,13 @@ namespace ECS {
 		}
 
 		//Elimina el componenete T de la entidad (no-op si no existe)
+
+		/**
+		 * @brief Elimina un componente de una entidad.
+		 *
+		 * Esta función elimina el componente del tipo T asociado a la entidad.
+		 * @param entity El ID de la entidad de la que se eliminará el componente.
+		 */
 		template<typename T> void
 			RemoveComponent(EntityID entity) {
 
@@ -79,6 +139,15 @@ namespace ECS {
 		}
 
 		//Remplaza el componente T de la entidad, o lo añade si no existe
+		/**
+		 * @brief Establece un componente de una entidad.
+		 *
+		 * Esta función reemplaza el componente del tipo T asociado a la entidad,
+		 * o lo añade si no existe.
+		 * @param entity El ID de la entidad a la que se le establecerá el componente.
+		 * @param value El nuevo valor del componente.
+		 * @return Una referencia al componente establecido.
+		 */
 		template<typename T, typename... Args> T&
 			SetComponent(EntityID entity, T value) {
 			assert(IsAlive(entity) && "SetComponent: Entity no existe o ya fue destruida");
@@ -93,6 +162,13 @@ namespace ECS {
 			return pool->Add(entity, std::move(value));
 		}
 
+		/*
+		 * @brief Verifica si una entidad tiene un componente.
+		 *
+		 * Esta función comprueba si la entidad tiene un componente del tipo T asociado.
+		 * @param entity El ID de la entidad a verificar.
+		 * @return true si la entidad tiene el componente, false en caso contrario.
+		 */
 		template<typename T>
 		[[nodiscard]] bool HasComponent(EntityID entity) const noexcept {
 
@@ -103,6 +179,14 @@ namespace ECS {
 
 		//Obtiene una referencia al componente T de la entidad. Lanza aserción si no existe.
 		//Acceso garantizado (assert si no existe)
+
+		/**
+			* @brief Obtiene un componente de una entidad.
+			*
+			* Esta función devuelve una referencia al componente del tipo T asociado a la entidad.
+			* @param entity El ID de la entidad de la que se obtendrá el componente.
+			* @return Una referencia al componente de la entidad.
+			*/
 		template<typename T>
 		[[nodiscard]] T& GetComponent(EntityID entity) {
 			assert(IsAlive(entity));
@@ -110,7 +194,16 @@ namespace ECS {
 			assert(pool && "GetComponent: Entity no tiene este componente");
 			return pool->Get(entity);
 		}
+
 		//Versión const de GetComponent
+
+		/**
+			* @brief Obtiene un componente de una entidad (versión constante).
+			*
+			* Esta función devuelve una referencia constante al componente del tipo T asociado a la entidad.
+			* @param entity El ID de la entidad de la que se obtendrá el componente.
+			* @return Una referencia constante al componente de la entidad.
+			*/ 
 		template<typename T>
 		[[nodiscard]] const T& GetComponent(EntityID entity) const {
 			assert(IsAlive(entity));
@@ -120,6 +213,15 @@ namespace ECS {
 		}
 
 		//Acceso seguro: devuelve puntero o nullptr si no existe
+
+		/**
+			* @brief Intenta obtener un componente de una entidad.
+			*
+			* Esta función devuelve un puntero al componente del tipo T asociado a la entidad,
+			* o nullptr si la entidad no tiene ese componente.
+			* @param entity El ID de la entidad de la que se intentará obtener el componente.
+			* @return Un puntero al componente de la entidad, o nullptr si no existe.
+			*/ 
 		template<typename T>
 		[[nodiscard]] T* TryGetComponent(EntityID entity) noexcept {
 			if (!IsAlive(entity)) return nullptr;
@@ -129,12 +231,31 @@ namespace ECS {
 
 		//Views (queries mult-componente)
 		//Ejemplo: registry.GetView<Transform, Velocity>()
+
+		/**
+		 * @brief Obtiene una vista de las entidades que tienen los componentes especificados.
+		 *
+		 * Esta función devuelve una vista que permite iterar sobre todas las entidades que tienen
+		 * los componentes del tipo especificado.
+		 * @return Una vista de las entidades con los componentes solicitados.
+		 */
 		template<typename... Components>
 		[[nodiscard]] View<Components...> GetView() noexcept {
 			return View<Components...>(GetOrCreatePool<Components>()...);
 		}
 
 		//Sistemas
+
+		/*
+		 * @brief Agrega un sistema al registro.
+		 *
+		 * Esta función crea una instancia del sistema T y lo registra en el
+		 * sistema de ECS. Llama a OnStart en el sistema después de registrarlo.
+		 * @tparam T El tipo del sistema a agregar.
+		 * @tparam Args Los tipos de los argumentos para el constructor del sistema.
+		 * @param args Los argumentos para el constructor del sistema.
+		 * @return Una referencia al sistema agregado.
+		 */
 		template<typename T, typename... Args> T&
 			AddSystem(Args&&... args) {
 			static_assert(std::is_base_of_v<System, T>, "T debe ser un System");
@@ -145,6 +266,12 @@ namespace ECS {
 			return ref;
 		}
 
+		/*
+		 * @brief Actualiza todos los sistemas.
+		 *
+		 * Esta función itera sobre todos los sistemas registrados y llama a su método OnUpdate.
+		 * @param deltaTime El tiempo transcurrido desde la última actualización.
+		 */
 		void
 			UpdateSystems(float deltaTime) {
 			for (auto& system : m_systems) {
@@ -154,6 +281,11 @@ namespace ECS {
 			}
 		}
 
+		/*
+		 * @brief Elimina todos los sistemas registrados.
+		 *
+		 * Esta función llama a OnStop en cada sistema antes de eliminarlo y limpiar la lista de sistemas.
+		 */
 		void RemoveAllSystems() {
 			for (auto& system : m_systems) {
 				system->OnStop(*this);
@@ -163,6 +295,13 @@ namespace ECS {
 
 		//Utilidades
 		//Destruye todo: entidades, componenetes y sistemas
+
+		/*
+		 * @brief Limpia completamente el registro.
+		 *
+		 * Esta función elimina todas las entidades, componentes y sistemas registrados,
+		 * dejando el registro en un estado vacío.
+		 */
 		void Clear() {
 			RemoveAllSystems();
 			for (auto& [typeID, pool] : m_componentPools) {
@@ -174,6 +313,13 @@ namespace ECS {
 		}
 
 		//Acceso a pools sin tipo (para el Serializer)
+
+		/*
+		 * @brief Obtiene todos los pools de componentes.
+		 *
+		 * Esta función devuelve un mapa que asocia cada tipo de componente con su pool correspondiente.
+		 * @return Un mapa de pools de componentes.
+		 */
 		[[nodiscard]] const std::unordered_map<ComponentTypeID, std::unique_ptr<IComponentPool>>&
 			GetPools() const noexcept { return m_componentPools; }
 
