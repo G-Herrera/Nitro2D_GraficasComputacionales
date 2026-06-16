@@ -16,7 +16,7 @@ namespace ECS {
 		* @brief Constructor de la clase View.
 		* @param pools Las pools de componentes que se utilizarán en la vista.
 		*/
-		explicit View(ComponentPool<Components>&... pools) noexcept : m_pools(pools ...) {
+		explicit View(ComponentPool<Components>*... pools) noexcept : m_pools(pools ...) {
 			FindSmallest();
 		}
 
@@ -31,7 +31,7 @@ namespace ECS {
 		void Each(Func&& func) {
 			if (!m_smallest) return; //No hay componenetes, no iteramos
 
-			cons auto& entities = m_smallest->GetEntities();
+			const auto& entities = m_smallest->GetEntities();
 			//Recorrido inverso -> seguro al eliminar durante la iteración
 			for(std::size_t i = entities.size(); i > 0; i--) {
 				const EntityID entity = entities[i - 1];
@@ -108,7 +108,7 @@ namespace ECS {
 		}
 
 	private:
-		std::tuple<ComponentPool<Components>&...> m_pools; ///< Las pools de componentes que se utilizarán en la vista.
+		std::tuple<ComponentPool<Components>*...> m_pools; ///< Las pools de componentes que se utilizarán en la vista.
 		const SparseSet* m_smallest = nullptr; ///< La pool de componentes más pequeña, utilizada para optimizar la iteración.
 
 	};

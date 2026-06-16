@@ -32,7 +32,6 @@ namespace ECS {
 	class
 		System {
 	public:
-		System();
 		virtual ~System() = default;
 
 		//Inicialización del sistema (se llama una vez al registrarse)

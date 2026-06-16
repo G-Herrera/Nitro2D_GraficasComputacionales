@@ -112,7 +112,7 @@ namespace ECS {
 	 */
 	template<typename T>
 	[[nodiscard]] ComponentTypeID GetComponentTypeID() noexcept {
-		static const ComponentTypeID id = NexComponentTypeID();
+		static const ComponentTypeID id = NextComponentTypeID();
 		return id;
 	}
 }

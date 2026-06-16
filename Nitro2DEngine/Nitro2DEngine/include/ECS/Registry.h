@@ -17,9 +17,6 @@ namespace ECS {
 	class
 		Registry {
 	public:
-		Registry();
-		~Registry();
-
 
 		/**
 		 * @brief Crea una nueva entidad.
@@ -240,7 +237,7 @@ namespace ECS {
 		 * @return Una vista de las entidades con los componentes solicitados.
 		 */
 		template<typename... Components>
-		[[nodiscard]] View<Components...> GetView() noexcept {
+		[[nodiscard]] View<Components...> GetView() {
 			return View<Components...>(GetOrCreatePool<Components>()...);
 		}
 

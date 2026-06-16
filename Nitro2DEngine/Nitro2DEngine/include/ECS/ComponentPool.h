@@ -44,11 +44,8 @@ namespace ECS{
 
 	template<typename T>
 	class
-		ComponentPool final : public IComponenetPool {
+		ComponentPool final : public IComponentPool {
 	public:
-		ComponentPool final : public IComponenetPool();
-		~ComponentPool final : public IComponenetPool();
-
 		/**
 			* Brief: Agrega un componente de tipo T a la entidad especificada.
 			*
@@ -75,7 +72,7 @@ namespace ECS{
 		[[nodiscard]] const T&
 			Get(EntityID entity) noexcept {
 			assert(Contains(entity) && "Entity no tiene este componente");
-			return m_components[m_parse[GetEntityIndex(entity)]];
+			return m_components[m_sparse[GetEntityIndex(entity)]];
 		}
 
 		/**
@@ -88,7 +85,7 @@ namespace ECS{
 		[[nodiscard]] const T&
 			Get(EntityID entity) const noexcept {
 			assert(Contains(entity) && "Entity no tiene este componente");
-			return m_components[m_parse[GetEntityIndex(entity)]];
+			return m_components[m_sparse[GetEntityIndex(entity)]];
 		}
 
 		/**
@@ -101,7 +98,7 @@ namespace ECS{
 		[[nodiscard]] T*
 			TryGet(EntityID entity) noexcept {
 			if (!Contains(entity)) return nullptr;
-			return &m_components[m_parse[GetEntityIndex(entity)]];
+			return &m_components[m_sparse[GetEntityIndex(entity)]];
 		}
 
 		// --- Eliminación (swap-with-last)--------------

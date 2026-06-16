@@ -17,7 +17,7 @@ namespace ECS {
 	class 
 	SparseSet {
 	public:
-		SparseSet();
+		SparseSet() = default;
 		virtual ~SparseSet() = default;
 
 		//Consultas
