@@ -7,6 +7,7 @@
 #include "ECS/Systems/RenderSystem.h"
 
 
+
 //Window* g_window = nullptr;
 CShape Circle(ShapeType::CIRCLE);
 
@@ -24,10 +25,26 @@ Window g_window(800, 600, "Nitro 2D Engine");
 * @note Es importante destacar que esta función es el punto de entrada del programa y es donde se inicializan los recursos necesarios para el funcionamiento del motor gráfico.
 */
 
+void destroy() {
+  ImGui::SFML::Shutdown();
+}
+
 
 int main()
 {
   registry.AddSystem<ECS::RenderSystem>(g_window);
+
+  //m_window es un puntero a sf::RenderWindow.
+  if (!ImGui::SFML::Init(*g_window.m_window)) {
+    return -1;
+  }
+
+  //Habilitar docking
+  ImGuiIO& io = ImGui::GetIO();
+  io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+
+  sf::Clock deltaClock;
+  bool showDemoWindow = true;
 
   ECS::EntityID circle = registry.CreateEntity();
   registry.AddComponent<ECS::Transform>(circle, sf::Vector2f{ 400.f, 300.f });
@@ -50,6 +67,9 @@ int main()
     // check all the window's events that were triggered since the last iteration of the loop
     while (const std::optional event = g_window.m_window->pollEvent())
     {
+      //ImGui debe recibir todos los eventos de SFML
+      ImGui::SFML::ProcessEvent(*g_window.m_window, *event);
+       
       // "close requested" event: we close the window
       if (event->is<sf::Event::Closed>()) 
       {
@@ -57,15 +77,30 @@ int main()
       }
     }
 
-    float dt = 1.f / 60.f;
+    const sf::Time elapsedTime = deltaClock.restart();
+    const float dt = elapsedTime.asSeconds();
+
+    //Iniciar el frame de ImGui
+    ImGui::SFML::Update(*g_window.m_window, elapsedTime);
+
+    ImGuiDockNodeFlags dockspaceFlags = ImGuiDockNodeFlags_PassthruCentralNode;
+
+    ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(), dockspaceFlags);
+
+    ImGui::ShowDemoWindow(&showDemoWindow);
 
     // clear the window with a gray color
     g_window.clear(sf::Color(122, 122, 122));
 
     // draw everything here...
-    Circle.draw(g_window);
+    registry.UpdateSystems(dt);
+
+    //Renderizar ImGui después de la escena.
+    ImGui::SFML::Render(*g_window.m_window);
 
     // end the current frame
     g_window.display();
   }
+  destroy();
+  return 0;
 }
