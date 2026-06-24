@@ -19,10 +19,11 @@
 
 //Third Parties
 #include <SFML/Graphics.hpp>
+#include <SFML/Config.hpp>
 #include <imgui.h>
 #include <imgui-SFML.h>
 
-//InGui
+//ImGui
 
 // MACRO for safe release of resources
 #define SAFE_PTR_RELEASE(x) if(x != nullptr) { delete x; x = nullptr; }

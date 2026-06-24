@@ -69,12 +69,13 @@ namespace ECS{
 			*
 			* <Notes> Este método asume que la entidad tiene un componente de este tipo.
 			*/
-		[[nodiscard]] const T&
-			Get(EntityID entity) noexcept {
+
+		[[nodiscard]] T&
+		Get(EntityID entity) noexcept {
 			assert(Contains(entity) && "Entity no tiene este componente");
 			return m_components[m_sparse[GetEntityIndex(entity)]];
 		}
-
+		
 		/**
 			* Brief: Obtiene una referencia constante al componente de tipo T asociado a la entidad especificada.
 			* <Args> entity: ID de la entidad de la que se desea obtener el componente.
@@ -83,11 +84,13 @@ namespace ECS{
 			* <Notes> Este método asume que la entidad tiene un componente de este tipo.
 			*/
 		[[nodiscard]] const T&
-			Get(EntityID entity) const noexcept {
+		Get(EntityID entity) const noexcept {
 			assert(Contains(entity) && "Entity no tiene este componente");
 			return m_components[m_sparse[GetEntityIndex(entity)]];
 		}
-
+		
+		
+		
 		/**
 			* Brief: Intenta obtener un puntero al componente de tipo T asociado a la entidad especificada.
 			* <Args> entity: ID de la entidad de la que se desea obtener el componente.
