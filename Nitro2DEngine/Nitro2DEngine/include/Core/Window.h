@@ -60,6 +60,12 @@ public:
 	void
 	close();
 
+	void 
+	applyCameraView(const sf::Vector2f& center, float zoom, float rotationDeg);
+
+	void
+	handleResize(const sf::Vector2u& size);
+
 	/**
 		* @brief Método para actualizar el estado de la ventana
 		*/ 
@@ -90,5 +96,6 @@ private:
 	sf::View m_view; /// Objeto de tipo sf::View que representa la vista de la ventana, utilizada para controlar la visualización del contenido en la ventana.
 	sf::Time m_deltaTime; /// Objeto de tipo sf::Time que representa el tiempo transcurrido entre actualizaciones de la ventana, utilizado para controlar la velocidad de actualización y renderizado del contenido en la ventana.
 	sf::Clock m_clock; /// Objeto de tipo sf::Clock que se utiliza para medir el tiempo transcurrido desde la última actualización de la ventana, utilizado para calcular el tiempo delta entre actualizaciones.
+	sf::Vector2f m_baseViewSize{};
 
 };
