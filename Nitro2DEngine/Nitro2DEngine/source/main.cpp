@@ -45,6 +45,7 @@ int main()
     return -1;
   }
 
+
   //Habilitar docking
   ImGuiIO& io = ImGui::GetIO();
   io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
@@ -54,7 +55,7 @@ int main()
 
   ECS::EntityID circle = registry.CreateEntity();
   registry.AddComponent<ECS::Transform>(circle, sf::Vector2f{ 400.f, 300.f });
-  registry.AddComponent<ECS::Render>(circle, ECS::Render::Make(CIRCLE, sf::Color(100, 250, 50)));
+  registry.AddComponent<ECS::Render>(circle, ECS::Render::Make(CIRCLE, sf::Color(100, 250, 50), "Textures/wallpaper11.jpg"));
   
   ECS::EntityID tri = registry.CreateEntity();
   registry.AddComponent<ECS::Transform>(tri, sf::Vector2f{ 200.f, 200.f }, 45.f);
@@ -106,7 +107,7 @@ int main()
     ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(), dockspaceFlags);
 
     // clear the window with a gray color
-    g_window.clear(sf::Color(122, 122, 122));
+    g_window.clear(sf::Color(46, 51, 51));
 
     // draw everything here...
     registry.UpdateSystems(dt);

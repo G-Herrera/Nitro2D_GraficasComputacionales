@@ -13,10 +13,165 @@ namespace ECS {
 	public:
 		UISystem() = default;
 
+    void Initialize()
+    {
+      ApplyStyle();
+    }
+
+    void 
+    ApplyStyle()
+    {
+      ImGuiStyle& style = ImGui::GetStyle();
+
+      style.WindowRounding = 2.f;
+      style.FrameRounding = 2.f;
+      style.TabRounding = 2.f;
+      style.GrabRounding = 2.f;
+
+      style.WindowBorderSize = 1.f;
+      style.FrameBorderSize = 1.f;
+
+      ImVec4* colors = style.Colors;
+
+      //=========================================================
+      // Texto
+      //=========================================================
+
+      colors[ImGuiCol_Text] = ImVec4(0.93f, 0.97f, 0.95f, 1.f);
+      colors[ImGuiCol_TextDisabled] = ImVec4(0.55f, 0.63f, 0.60f, 1.f);
+
+      //=========================================================
+      // Fondo
+      //=========================================================
+
+      // #29332F
+      colors[ImGuiCol_WindowBg] = ImVec4(0.16f, 0.20f, 0.18f, 1.f);
+
+      // ligeramente más oscuro
+      colors[ImGuiCol_ChildBg] = ImVec4(0.13f, 0.17f, 0.15f, 1.f);
+
+      colors[ImGuiCol_PopupBg] = ImVec4(0.16f, 0.20f, 0.18f, 1.f);
+
+      //=========================================================
+      // Bordes
+      //=========================================================
+
+      colors[ImGuiCol_Border] = ImVec4(0.21f, 0.53f, 0.41f, 0.65f);
+
+      //=========================================================
+      // Frames
+      //=========================================================
+
+      // #325448
+      colors[ImGuiCol_FrameBg] = ImVec4(0.20f, 0.33f, 0.28f, 1.f);
+
+      // #368769
+      colors[ImGuiCol_FrameBgHovered] = ImVec4(0.21f, 0.53f, 0.41f, 1.f);
+
+      // #25BA84
+      colors[ImGuiCol_FrameBgActive] = ImVec4(0.15f, 0.73f, 0.52f, 1.f);
+
+      //=========================================================
+      // Botones
+      //=========================================================
+
+      colors[ImGuiCol_Button] = ImVec4(0.20f, 0.33f, 0.28f, 1.f);
+      colors[ImGuiCol_ButtonHovered] = ImVec4(0.15f, 0.73f, 0.52f, 1.f);
+      colors[ImGuiCol_ButtonActive] = ImVec4(0.00f, 0.93f, 0.59f, 1.f);
+
+      //=========================================================
+      // Headers
+      //=========================================================
+
+      colors[ImGuiCol_Header] = ImVec4(0.20f, 0.33f, 0.28f, 1.f);
+      colors[ImGuiCol_HeaderHovered] = ImVec4(0.15f, 0.73f, 0.52f, 1.f);
+      colors[ImGuiCol_HeaderActive] = ImVec4(0.00f, 0.93f, 0.59f, 1.f);
+
+      //=========================================================
+      // Checkboxes / Sliders
+      //=========================================================
+
+      colors[ImGuiCol_CheckMark] = ImVec4(0.00f, 0.93f, 0.59f, 1.f);
+
+      colors[ImGuiCol_SliderGrab] = ImVec4(0.15f, 0.73f, 0.52f, 1.f);
+      colors[ImGuiCol_SliderGrabActive] = ImVec4(0.00f, 0.93f, 0.59f, 1.f);
+
+      //=========================================================
+      // Barra de título
+      //=========================================================
+
+      colors[ImGuiCol_TitleBg] = ImVec4(0.20f, 0.33f, 0.28f, 1.f);
+      colors[ImGuiCol_TitleBgActive] = ImVec4(0.21f, 0.53f, 0.41f, 1.f);
+      colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.16f, 0.20f, 0.18f, 1.f);
+
+      //=========================================================
+      // Tabs
+      //=========================================================
+
+      colors[ImGuiCol_Tab] = ImVec4(0.20f, 0.33f, 0.28f, 1.f);
+      colors[ImGuiCol_TabHovered] = ImVec4(0.15f, 0.73f, 0.52f, 1.f);
+      colors[ImGuiCol_TabActive] = ImVec4(0.00f, 0.93f, 0.59f, 1.f);
+
+      colors[ImGuiCol_TabUnfocused] = ImVec4(0.18f, 0.24f, 0.21f, 1.f);
+      colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.21f, 0.53f, 0.41f, 1.f);
+
+      //=========================================================
+      // Menú
+      //=========================================================
+
+      colors[ImGuiCol_MenuBarBg] = ImVec4(0.16f, 0.20f, 0.18f, 1.f);
+
+      //=========================================================
+      // Separadores
+      //=========================================================
+
+      colors[ImGuiCol_Separator] = ImVec4(0.21f, 0.53f, 0.41f, 0.50f);
+      colors[ImGuiCol_SeparatorHovered] = ImVec4(0.15f, 0.73f, 0.52f, 1.f);
+      colors[ImGuiCol_SeparatorActive] = ImVec4(0.00f, 0.93f, 0.59f, 1.f);
+
+      //=========================================================
+      // Resize
+      //=========================================================
+
+      colors[ImGuiCol_ResizeGrip] = ImVec4(0.21f, 0.53f, 0.41f, 0.45f);
+      colors[ImGuiCol_ResizeGripHovered] = ImVec4(0.15f, 0.73f, 0.52f, 1.f);
+      colors[ImGuiCol_ResizeGripActive] = ImVec4(0.00f, 0.93f, 0.59f, 1.f);
+
+      //=========================================================
+      // Docking
+      //=========================================================
+
+      colors[ImGuiCol_DockingPreview] = ImVec4(0.00f, 0.93f, 0.59f, 0.55f);
+      colors[ImGuiCol_DockingEmptyBg] = ImVec4(0.16f, 0.20f, 0.18f, 1.f);
+
+      //=========================================================
+      // Scrollbar
+      //=========================================================
+
+      colors[ImGuiCol_ScrollbarBg] = ImVec4(0.13f, 0.17f, 0.15f, 1.f);
+      colors[ImGuiCol_ScrollbarGrab] = ImVec4(0.20f, 0.33f, 0.28f, 1.f);
+      colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.21f, 0.53f, 0.41f, 1.f);
+      colors[ImGuiCol_ScrollbarGrabActive] = ImVec4(0.00f, 0.93f, 0.59f, 1.f);
+
+      //=========================================================
+      // Selección de texto
+      //=========================================================
+
+      colors[ImGuiCol_TextSelectedBg] = ImVec4(0.00f, 0.93f, 0.59f, 0.35f);
+
+      colors[ImGuiCol_NavHighlight] = ImVec4(0.00f, 0.93f, 0.59f, 1.f);
+    }
+
 		void 
 		OnUpdate(Registry& registry, float deltaTime) override {
+      if (!m_initialized)
+      {
+        ApplyStyle();
+        m_initialized = true;
+      }
+
       Outliner(registry);
-      Inspector(registry);  
+      Inspector(registry);
 		}
 
 		void 
@@ -105,6 +260,7 @@ namespace ECS {
 
 	private:
 		ECS::EntityID selectedEntity = ECS::NULL_ENTITY;
+    bool m_initialized = false;
 	};
 
 };

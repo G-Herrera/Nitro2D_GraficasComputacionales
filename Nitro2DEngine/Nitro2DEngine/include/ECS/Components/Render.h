@@ -19,6 +19,7 @@ namespace ECS {
 
 	struct Render {
 		std::shared_ptr<sf::Shape> shape;					// la forma a dibujar
+		std::shared_ptr<sf::Texture> texture;     // sprite opciona (nullptr sin sprite)
 		sf::Color fillColor{ sf::Color::White };  // color de relleno
 		bool visible{ true };											// permite ocultar si nquitar el componente
 
@@ -27,8 +28,38 @@ namespace ECS {
 		explicit Render(std::shared_ptr<sf::Shape> s, sf::Color color = sf::Color::White) 
 										noexcept : shape(std::move(s)), fillColor(color){}
 
+		bool 
+		SetTexture(const std::string& path, bool resetRect = true) 
+		{
+			if (!shape) return false;
+			auto tex = std::make_shared<sf::Texture>();
+			if (!tex->loadFromFile(path)) return false;
+			texture = std::move(tex);
+			shape->setTexture(texture.get(), resetRect);
+			return true;
+		}
+
+		void 
+		SetTexture(std::shared_ptr<sf::Texture> tex, bool resetRect = true) 
+		{
+			if (!shape) return;
+			texture = std::move(tex);
+			shape->setTexture(texture ? texture.get() : nullptr, resetRect);
+		}
+
+		void 
+		ClearTexture() 
+		{
+			if (!shape) return;
+			texture.reset();
+			shape->setTexture(nullptr);
+		}
+
 		[[nodiscard]] static Render
-			Make(ShapeType type, sf::Color color = sf::Color::White) {
+		Make(ShapeType type, 
+				 sf::Color color = sf::Color::White, 
+				 const std::string& texturePath = "") 
+		{
 			std::shared_ptr<sf::Shape> s;
 
 			switch (type)
@@ -81,7 +112,10 @@ namespace ECS {
 			}
 
 			if (s) s->setFillColor(color);
-			return Render{ s, color };
+
+			Render render{ s, color };
+			if (!texturePath.empty()) render.SetTexture(texturePath);
+			return render;
 		}
 	};
 }
