@@ -8,6 +8,10 @@
 #include "ECS/Systems/RenderSystem.h"
 #include "ECS/Systems/CameraSystem.h"
 #include "ECS/Systems/UISystem.h"
+#include "ECS/Systems/SteeringSystem.h"
+#include "ECS/Components/Velocity.h"
+#include "ECS/Components/Acceleration.h"
+#include "ECS/Components/SteeringComponent.h"
 
 
 //Window* g_window = nullptr;
@@ -35,6 +39,7 @@ void destroy() {
 int main()
 {
   //Registro de sistemas en el ECS
+  registry.AddSystem<ECS::SteeringSystem>();
   registry.AddSystem<ECS::CameraSystem>(g_window);
   registry.AddSystem<ECS::UISystem>();
   registry.AddSystem<ECS::RenderSystem>(g_window);
@@ -67,6 +72,15 @@ int main()
   camComp.followTarget = circle;     // la cámara sigue al player
   camComp.followSpeed = 5.f;        // sube para que se pegue más rápido
   camComp.zoom = 1;
+
+	// add velocity and acceleration components to the triangle entity
+  registry.AddComponent<ECS::Velocity>(tri);
+  registry.AddComponent<ECS::Acceleration>(tri);
+  auto& triSteer = registry.AddComponent<ECS::SteeringComponent>(tri);
+  triSteer.seekEnabled = true;
+  triSteer.target = circle;
+  triSteer.maxSpeed = 150.f;
+  triSteer.maxForce = 80.f;
 
   // create the window
   

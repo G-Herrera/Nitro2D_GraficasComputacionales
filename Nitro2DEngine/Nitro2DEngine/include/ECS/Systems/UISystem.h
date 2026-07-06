@@ -5,6 +5,7 @@
 #include "ECS/Components/Transform.h"
 #include "ECS/Components/Render.h"
 #include "ECS/Components/Camera.h"
+#include "ECS/Components/SteeringComponent.h"
 
 namespace ECS {
 	class UISystem final : public System
@@ -251,6 +252,38 @@ namespace ECS {
             else
               ImGui::Text("Follow Target: %llu",
                 static_cast<unsigned long long>(cam->followTarget));
+          }
+        }
+
+        if (registry.HasComponent<ECS::SteeringComponent>(selectedEntity))
+        {
+          auto& steer = registry.GetComponent<ECS::SteeringComponent>(selectedEntity);
+
+          ImGui::Separator();
+          if (ImGui::CollapsingHeader("Steering", ImGuiTreeNodeFlags_DefaultOpen)) {
+
+            ImGui::Checkbox("Seek", &steer.seekEnabled);
+            ImGui::SameLine();
+            ImGui::Checkbox("Flee", &steer.fleeEnabled);
+            ImGui::SameLine();
+            ImGui::Checkbox("Arrive", &steer.arriveEnabled);
+
+            ImGui::DragFloat("Max Speed", &steer.maxSpeed, 1.f, 0.f, 2000.f);
+            ImGui::DragFloat("Max Force", &steer.maxForce, 1.f, 0.f, 2000.f);
+            ImGui::DragFloat("Slowing Radius", &steer.slowingRadius, 1.f, 0.f, 2000.f);
+
+            // Target: se edita directamente el EntityID (uint64_t).
+            // Mismo criterio de solo-lectura/edición simple que usa
+            // Camera::followTarget, pero aquí sí es editable.
+            ImGuiDataType_ entityIdType = ImGuiDataType_U64;
+            ImGui::InputScalar("Target Entity", entityIdType, &steer.target);
+
+            if (steer.target == ECS::NULL_ENTITY)
+              ImGui::TextDisabled("Target: (ninguno)");
+            else if (!registry.IsAlive(steer.target))
+              ImGui::TextColored(ImVec4(1.f, 0.4f, 0.4f, 1.f), "Target: entidad no valida");
+            else
+              ImGui::Text("Target: %llu", static_cast<unsigned long long>(steer.target));
           }
         }
       }

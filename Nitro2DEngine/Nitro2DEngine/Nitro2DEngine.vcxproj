@@ -175,20 +175,25 @@
     <ClCompile Include="..\ThirdParties\imgui-sfml-3.0\imgui-SFML.cpp" />
     <ClCompile Include="source\Core\CShape.cpp" />
     <ClCompile Include="source\Core\Window.cpp" />
+    <ClCompile Include="source\ECS\Systems\SteeringSystem.cpp" />
     <ClCompile Include="source\main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\Core\CShape.h" />
     <ClInclude Include="include\Core\Window.h" />
     <ClInclude Include="include\ECS\ComponentPool.h" />
+    <ClInclude Include="include\ECS\Components\Acceleration.h" />
     <ClInclude Include="include\ECS\Components\Camera.h" />
     <ClInclude Include="include\ECS\Components\Render.h" />
+    <ClInclude Include="include\ECS\Components\SteeringComponent.h" />
     <ClInclude Include="include\ECS\Components\Transform.h" />
+    <ClInclude Include="include\ECS\Components\Velocity.h" />
     <ClInclude Include="include\ECS\Registry.h" />
     <ClInclude Include="include\ECS\SparseSet.h" />
     <ClInclude Include="include\ECS\System.h" />
     <ClInclude Include="include\ECS\Systems\CameraSystem.h" />
     <ClInclude Include="include\ECS\Systems\RenderSystem.h" />
+    <ClInclude Include="include\ECS\Systems\SteeringSystem.h" />
     <ClInclude Include="include\ECS\Systems\UISystem.h" />
     <ClInclude Include="include\ECS\Types.h" />
     <ClInclude Include="include\ECS\View.h" />
