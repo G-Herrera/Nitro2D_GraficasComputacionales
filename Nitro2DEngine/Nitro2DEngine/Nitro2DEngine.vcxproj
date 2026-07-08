@@ -190,6 +190,7 @@
     <ClInclude Include="include\ECS\Components\SteeringComponent.h" />
     <ClInclude Include="include\ECS\Components\Transform.h" />
     <ClInclude Include="include\ECS\Components\Velocity.h" />
+    <ClInclude Include="include\ECS\Editor\ComponentRegistry.h" />
     <ClInclude Include="include\ECS\Registry.h" />
     <ClInclude Include="include\ECS\SparseSet.h" />
     <ClInclude Include="include\ECS\System.h" />

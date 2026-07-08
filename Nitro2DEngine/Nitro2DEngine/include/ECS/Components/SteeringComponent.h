@@ -41,7 +41,7 @@ namespace ECS {
 		//Wander
 		float wanderRadius{ 40.f }; // radio del círculo de wander
 		float wanderDistance{ 80.f }; // distancia del círculo de wander
-		float wanderJitter{ 10.f }; // cantidad de jitter por segundo
+		float wanderJitter{ 1.5f }; // cantidad de jitter por segundo
 
 		//Estado interno de Wander
 		float wanderAngle{ 0.f }; // ángulo actual de wander, usado para calcular la posición del objetivo de wander

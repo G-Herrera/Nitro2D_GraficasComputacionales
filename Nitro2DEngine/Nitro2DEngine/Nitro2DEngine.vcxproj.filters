@@ -46,6 +46,9 @@
     <Filter Include="Source Files\Modules">
       <UniqueIdentifier>{cd591705-1b65-4806-be70-cec15188e566}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\ECS\Editor">
+      <UniqueIdentifier>{7915cd7e-fadb-4749-be96-9027276654ef}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\main.cpp">
@@ -145,6 +148,9 @@
     </ClInclude>
     <ClInclude Include="include\Modules\Math2D.h">
       <Filter>Header Files\Modules</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ECS\Editor\ComponentRegistry.h">
+      <Filter>Header Files\ECS\Editor</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -2,6 +2,7 @@
 #include "Prerequisites.h"
 #include "ECS/System.h"
 #include "ECS/Components/SteeringComponent.h"
+#include "ECS/Components/Obstacle.h"
 //=========================================================
 // ECS::Systems/SteeringSystem.h
 //
@@ -19,6 +20,13 @@
 //=========================================================
 namespace ECS {
 	class Registry;
+
+	//Snapshot de un obstáculo para este frame (evita re-consultar
+	//la view de Obstacle por cada entidad con SteeringComponent).
+	struct ObstacleData {
+		sf::Vector2f position;
+		float radius;
+	};
 
 	class SteeringSystem final : public System
 	{
@@ -58,5 +66,23 @@ namespace ECS {
 			const sf::Vector2f& velocity,
 			SteeringComponent& steering,
 			float deltaTime) const noexcept;
+
+		//Calcula el vector de steering para Pursuit (Seek con predicción)
+		[[nodiscard]] sf::Vector2f
+			ComputePursuit(const sf::Vector2f& position,
+				const sf::Vector2f& velocity,
+				const sf::Vector2f& targetPos,
+				const sf::Vector2f& targetVelocity,
+				float maxSpeed,
+				float predictionTime) const noexcept;
+
+		//Calcula el vector de steering para evitar el obstáculo más amenazante
+		[[nodiscard]] sf::Vector2f
+			ComputeObstacleAvoidance(const sf::Vector2f& position,
+				const sf::Vector2f& velocity,
+				const std::vector<ObstacleData>& obstacles,
+				float lookAhead,
+				float agentRadius,
+				float maxSpeed) const noexcept;
 	};
 }

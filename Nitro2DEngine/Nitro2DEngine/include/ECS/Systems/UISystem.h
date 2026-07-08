@@ -6,6 +6,8 @@
 #include "ECS/Components/Render.h"
 #include "ECS/Components/Camera.h"
 #include "ECS/Components/SteeringComponent.h"
+#include "ECS/Components/Obstacle.h"
+#include "ECS/Editor/ComponentRegistry.h"
 
 namespace ECS {
 	class UISystem final : public System
@@ -211,6 +213,26 @@ namespace ECS {
         ImGui::Text("No hay entidad seleccionada");
       }
 
+      if (registry.IsAlive(selectedEntity))
+      {
+        ImGui::Separator();
+
+        if (ImGui::Button("+ Add Component")) {
+          ImGui::OpenPopup("AddComponentPopup");
+        }
+
+        if (ImGui::BeginPopup("AddComponentPopup")) {
+          for (auto& info : ECS::Editor::ComponentRegistry::Instance().GetTypes()) {
+            if (info.hasComponent(registry, selectedEntity)) continue; // ya lo tiene
+
+            if (ImGui::Selectable(info.name.c_str())) {
+              info.addComponent(registry, selectedEntity);
+            }
+          }
+          ImGui::EndPopup();
+        }
+      }
+
       if (registry.HasComponent<ECS::Render>(selectedEntity))
       {
         auto& render = registry.GetComponent<ECS::Render>(selectedEntity);
@@ -268,22 +290,67 @@ namespace ECS {
             ImGui::SameLine();
             ImGui::Checkbox("Arrive", &steer.arriveEnabled);
 
+            ImGui::Checkbox("Pursuit", &steer.pursuitEnabled);
+            ImGui::SameLine();
+            ImGui::Checkbox("Wander", &steer.wanderEnabled);
+            ImGui::SameLine();
+            ImGui::Checkbox("Avoid Obstacles", &steer.obstacleAvoidanceEnabled);
+
             ImGui::DragFloat("Max Speed", &steer.maxSpeed, 1.f, 0.f, 2000.f);
             ImGui::DragFloat("Max Force", &steer.maxForce, 1.f, 0.f, 2000.f);
             ImGui::DragFloat("Slowing Radius", &steer.slowingRadius, 1.f, 0.f, 2000.f);
 
-            // Target: se edita directamente el EntityID (uint64_t).
-            // Mismo criterio de solo-lectura/edición simple que usa
-            // Camera::followTarget, pero aquí sí es editable.
-            ImGuiDataType_ entityIdType = ImGuiDataType_U64;
-            ImGui::InputScalar("Target Entity", entityIdType, &steer.target);
+            // --- Target: combo poblado desde la Hierarchy (registry.GetAllEntities()) ---
+            {
+              std::string previewLabel = (steer.target == ECS::NULL_ENTITY)
+                ? "(ninguno)"
+                : ("Entity " + std::to_string(steer.target));
 
-            if (steer.target == ECS::NULL_ENTITY)
-              ImGui::TextDisabled("Target: (ninguno)");
-            else if (!registry.IsAlive(steer.target))
-              ImGui::TextColored(ImVec4(1.f, 0.4f, 0.4f, 1.f), "Target: entidad no valida");
-            else
-              ImGui::Text("Target: %llu", static_cast<unsigned long long>(steer.target));
+              if (ImGui::BeginCombo("Target Entity", previewLabel.c_str())) {
+
+                bool noneSelected = (steer.target == ECS::NULL_ENTITY);
+                if (ImGui::Selectable("(ninguno)", noneSelected)) {
+                  steer.target = ECS::NULL_ENTITY;
+                }
+
+                for (auto candidate : registry.GetAllEntities()) {
+                  if (!registry.IsAlive(candidate)) continue;
+                  if (candidate == selectedEntity) continue; // evita auto-target
+
+                  std::string label = "Entity " + std::to_string(candidate);
+                  bool isSelected = (steer.target == candidate);
+                  if (ImGui::Selectable(label.c_str(), isSelected)) {
+                    steer.target = candidate;
+                  }
+                }
+                ImGui::EndCombo();
+              }
+            }
+
+            if (steer.pursuitEnabled) {
+              ImGui::DragFloat("Prediction Time", &steer.pursuitPredictionTime, 0.05f, 0.f, 5.f);
+            }
+
+            if (steer.wanderEnabled) {
+              ImGui::DragFloat("Wander Radius", &steer.wanderRadius, 0.5f, 0.f, 500.f);
+              ImGui::DragFloat("Wander Distance", &steer.wanderDistance, 0.5f, 0.f, 500.f);
+              ImGui::DragFloat("Wander Jitter", &steer.wanderJitter, 0.05f, 0.f, 20.f);
+            }
+
+            if (steer.obstacleAvoidanceEnabled) {
+              ImGui::DragFloat("Look Ahead", &steer.obstacleLookAhead, 1.f, 0.f, 1000.f);
+              ImGui::DragFloat("Agent Radius", &steer.obstacleRadius, 0.5f, 0.f, 200.f);
+            }
+          }
+        }
+
+        if (registry.HasComponent<ECS::Obstacle>(selectedEntity))
+        {
+          auto& obstacle = registry.GetComponent<ECS::Obstacle>(selectedEntity);
+
+          ImGui::Separator();
+          if (ImGui::CollapsingHeader("Obstacle", ImGuiTreeNodeFlags_DefaultOpen)) {
+            ImGui::DragFloat("Radius", &obstacle.radius, 0.5f, 1.f, 500.f);
           }
         }
       }

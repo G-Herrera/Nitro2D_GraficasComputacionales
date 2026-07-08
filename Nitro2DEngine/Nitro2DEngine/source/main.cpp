@@ -77,10 +77,18 @@ int main()
   registry.AddComponent<ECS::Velocity>(tri);
   registry.AddComponent<ECS::Acceleration>(tri);
   auto& triSteer = registry.AddComponent<ECS::SteeringComponent>(tri);
-  triSteer.seekEnabled = true;
-  triSteer.target = circle;
-  triSteer.maxSpeed = 150.f;
-  triSteer.maxForce = 80.f;
+
+  // Testing steering behaviors
+  triSteer.seekEnabled = false;
+  triSteer.wanderEnabled = true;
+
+  //triSteer.target = circle;
+  triSteer.maxSpeed = 100.f;
+  triSteer.maxForce = 60.f;
+
+  triSteer.wanderRadius = 35.f;
+  triSteer.wanderDistance = 70.f;
+  triSteer.wanderJitter = 2.0f;
 
   // create the window
   
