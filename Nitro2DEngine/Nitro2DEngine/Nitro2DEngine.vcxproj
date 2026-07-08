@@ -177,6 +177,7 @@
     <ClCompile Include="source\Core\Window.cpp" />
     <ClCompile Include="source\ECS\Systems\SteeringSystem.cpp" />
     <ClCompile Include="source\main.cpp" />
+    <ClCompile Include="source\Modules\Math2D.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\Core\CShape.h" />
@@ -184,6 +185,7 @@
     <ClInclude Include="include\ECS\ComponentPool.h" />
     <ClInclude Include="include\ECS\Components\Acceleration.h" />
     <ClInclude Include="include\ECS\Components\Camera.h" />
+    <ClInclude Include="include\ECS\Components\Obstacle.h" />
     <ClInclude Include="include\ECS\Components\Render.h" />
     <ClInclude Include="include\ECS\Components\SteeringComponent.h" />
     <ClInclude Include="include\ECS\Components\Transform.h" />
@@ -197,6 +199,7 @@
     <ClInclude Include="include\ECS\Systems\UISystem.h" />
     <ClInclude Include="include\ECS\Types.h" />
     <ClInclude Include="include\ECS\View.h" />
+    <ClInclude Include="include\Modules\Math2D.h" />
     <ClInclude Include="include\Prerequisites.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -16,6 +16,8 @@
 #include <tuple>
 #include <cstddef>
 #include <queue>
+#include <cmath>
+#include <random>
 
 //Third Parties
 #include <SFML/Graphics.hpp>

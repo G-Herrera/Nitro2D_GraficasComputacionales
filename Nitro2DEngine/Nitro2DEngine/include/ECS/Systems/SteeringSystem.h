@@ -1,6 +1,7 @@
 #pragma once
 #include "Prerequisites.h"
 #include "ECS/System.h"
+#include "ECS/Components/SteeringComponent.h"
 //=========================================================
 // ECS::Systems/SteeringSystem.h
 //
@@ -51,8 +52,11 @@ namespace ECS {
 				float maxSpeed,
 				float slowingRadius) const noexcept;
 
-		//Limita la magnitud de un vector a un máximo dado
-		[[nodiscard]] sf::Vector2f
-			Limit(const sf::Vector2f& vector, float max) const noexcept;
+		[[nodiscard]]
+		sf::Vector2f ComputeWander(
+			const sf::Vector2f& position,
+			const sf::Vector2f& velocity,
+			SteeringComponent& steering,
+			float deltaTime) const noexcept;
 	};
 }

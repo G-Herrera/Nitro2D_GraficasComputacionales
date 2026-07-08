@@ -40,6 +40,12 @@
     <Filter Include="Source Files\ECS\Systems">
       <UniqueIdentifier>{f4ed19c9-fc5c-4cb6-ab25-c0e5b8c6e0ed}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\Modules">
+      <UniqueIdentifier>{2790a5fc-7d0d-4cef-a3d8-a61f1b047d14}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Modules">
+      <UniqueIdentifier>{cd591705-1b65-4806-be70-cec15188e566}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="source\main.cpp">
@@ -71,6 +77,9 @@
     </ClCompile>
     <ClCompile Include="source\ECS\Systems\SteeringSystem.cpp">
       <Filter>Source Files\ECS\Systems</Filter>
+    </ClCompile>
+    <ClCompile Include="source\Modules\Math2D.cpp">
+      <Filter>Source Files\Modules</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -130,6 +139,12 @@
     </ClInclude>
     <ClInclude Include="include\ECS\Systems\SteeringSystem.h">
       <Filter>Header Files\ECS\Systems</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ECS\Components\Obstacle.h">
+      <Filter>Header Files\ECS\Components</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Modules\Math2D.h">
+      <Filter>Header Files\Modules</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
