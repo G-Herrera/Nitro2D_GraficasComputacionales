@@ -185,12 +185,14 @@
     <ClInclude Include="include\ECS\ComponentPool.h" />
     <ClInclude Include="include\ECS\Components\Acceleration.h" />
     <ClInclude Include="include\ECS\Components\Camera.h" />
+    <ClInclude Include="include\ECS\Components\Name.h" />
     <ClInclude Include="include\ECS\Components\Obstacle.h" />
     <ClInclude Include="include\ECS\Components\Render.h" />
     <ClInclude Include="include\ECS\Components\SteeringComponent.h" />
     <ClInclude Include="include\ECS\Components\Transform.h" />
     <ClInclude Include="include\ECS\Components\Velocity.h" />
     <ClInclude Include="include\ECS\Editor\ComponentRegistry.h" />
+    <ClInclude Include="include\ECS\EntityFactory.h" />
     <ClInclude Include="include\ECS\Registry.h" />
     <ClInclude Include="include\ECS\SparseSet.h" />
     <ClInclude Include="include\ECS\System.h" />

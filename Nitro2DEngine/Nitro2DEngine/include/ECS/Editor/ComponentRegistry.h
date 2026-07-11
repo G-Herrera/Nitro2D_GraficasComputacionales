@@ -5,6 +5,7 @@
 #include "ECS/Components/SteeringComponent.h"
 #include "ECS/Components/Obstacle.h"
 #include "ECS/Components/Camera.h"
+#include "ECS/Components/Name.h"
 #include <vector>
 #include <string>
 #include <functional>
@@ -51,6 +52,7 @@ namespace ECS::Editor {
 			Register<Obstacle>("Obstacle");
 			Register<Camera>("Camera");
 			Register<SteeringComponent>("Steering Component", { "Velocity", "Acceleration" });
+			Register<Name>("Name");
 			// Nota: Transform y Render no se listan aquí porque en este
 			// proyecto toda entidad ya nace con Transform, y Render
 			// requiere parámetros de construcción (tipo de forma,

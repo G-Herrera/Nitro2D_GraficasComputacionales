@@ -197,6 +197,16 @@ namespace ECS {
 							obstacles, steer.obstacleLookAhead, steer.obstacleRadius, steer.maxSpeed);
 					}
 
+					const bool anyBehaviorEnabled =
+						steer.seekEnabled || steer.fleeEnabled || steer.arriveEnabled ||
+						steer.pursuitEnabled || steer.wanderEnabled || steer.obstacleAvoidanceEnabled;
+
+					if (!anyBehaviorEnabled) {
+						accel.acceleration = { 0.f, 0.f };
+						vel.velocity = { 0.f, 0.f };
+						return; // sin comportamiento activo: la entidad no se mueve este frame
+					}
+
 					//Limitar la fuerza de steering resultante
 					steeringForce = Math::Truncate(steeringForce, steer.maxForce);
 					accel.acceleration = steeringForce;

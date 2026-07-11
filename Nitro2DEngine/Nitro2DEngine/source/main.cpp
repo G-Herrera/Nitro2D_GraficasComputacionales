@@ -2,6 +2,7 @@
 #include <Core/Window.h>
 #include <Core/CShape.h>
 #include "ECS/Registry.h"
+#include "ECS/EntityFactory.h"
 #include "ECS/Components/Transform.h"
 #include "ECS/Components/Render.h"
 #include "ECS/Components/Camera.h"
@@ -58,19 +59,17 @@ int main()
   sf::Clock deltaClock;
   bool showDemoWindow = true;
 
-  ECS::EntityID circle = registry.CreateEntity();
-  registry.AddComponent<ECS::Transform>(circle, sf::Vector2f{ 400.f, 300.f });
+  ECS::EntityID circle = ECS::CreateEntity(registry, "Player", { 400.f, 300.f });
   registry.AddComponent<ECS::Render>(circle, ECS::Render::Make(CIRCLE, sf::Color(100, 250, 50), "Textures/wallpaper11.jpg"));
-  
-  ECS::EntityID tri = registry.CreateEntity();
-  registry.AddComponent<ECS::Transform>(tri, sf::Vector2f{ 200.f, 200.f }, 45.f);
+
+  ECS::EntityID tri = ECS::CreateEntity(registry, "Triangle", { 200.f, 200.f });
+  registry.GetComponent<ECS::Transform>(tri).rotation = 45.f;
   registry.AddComponent<ECS::Render>(tri, ECS::Render::Make(TRIANGLE, sf::Color::Cyan));
-  
-  ECS::EntityID cam = registry.CreateEntity();
-  registry.AddComponent<ECS::Transform>(cam, sf::Vector2f{ 0.f, 0.f });
+
+  ECS::EntityID cam = ECS::CreateEntity(registry, "MainCamera");
   auto& camComp = registry.AddComponent<ECS::Camera>(cam);
-  camComp.followTarget = circle;     // la cámara sigue al player
-  camComp.followSpeed = 5.f;        // sube para que se pegue más rápido
+  camComp.followTarget = circle;
+  camComp.followSpeed = 5.f;
   camComp.zoom = 1;
 
 	// add velocity and acceleration components to the triangle entity
