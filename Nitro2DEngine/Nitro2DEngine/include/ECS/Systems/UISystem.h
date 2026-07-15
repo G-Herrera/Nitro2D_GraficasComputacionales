@@ -166,6 +166,15 @@ namespace ECS {
       colors[ImGuiCol_NavHighlight] = ImVec4(0.00f, 0.93f, 0.59f, 1.f);
     }
 
+
+    /**
+			* @brief Se llama cada frame, aquí va la lógica principal del sistema.
+      * 
+			* @param registry Referencia al Registry del sistema.
+			* @param deltaTime Tiempo transcurrido desde el último frame.
+      * 
+			* @note Este método maneja la interfaz de usuario, incluyendo el Outliner y el Inspector,
+      */
 		void 
 		OnUpdate(Registry& registry, float deltaTime) override {
       if (!m_initialized)
@@ -181,7 +190,14 @@ namespace ECS {
       Outliner(registry);
       Inspector(registry);
 		}
-
+    
+		/**
+			* @brief Muestra la ventana de Outliner, que lista todas las entidades en el registro.
+      * 
+			* @param registry Referencia al Registry del sistema.
+      * 
+			* @note Este método crea una ventana de ImGui que lista todas las entidades vivas en el registro.
+      */
 		void 
 		Outliner(Registry& registry) {
 			ImGui::Begin("Hierarchy");
@@ -200,6 +216,14 @@ namespace ECS {
       ImGui::End();
 		}
 
+		/**
+			* @brief Muestra la ventana de Inspector, que permite ver y modificar los componentes de la entidad seleccionada.
+      * 
+			* @param registry Referencia al Registry del sistema.
+      * 
+			* @note Este método crea una ventana de ImGui que muestra los componentes de la entidad 
+      * seleccionada y permite agregar, eliminar o modificar sus propiedades.
+      */
     void
     Inspector(Registry& registry) {
       ImGui::Begin("Inspector");
@@ -437,10 +461,21 @@ namespace ECS {
 
 
 	private:
-		ECS::EntityID selectedEntity = ECS::NULL_ENTITY;
-    bool m_initialized = false;
-    float m_nameWarningTimer = 0.f;
+		ECS::EntityID selectedEntity = ECS::NULL_ENTITY;///< ID de la entidad actualmente seleccionada en el Outliner.
+		bool m_initialized = false;///< Indica si el sistema ha sido inicializado (para aplicar el estilo de ImGui una sola vez).
+		float m_nameWarningTimer = 0.f;///< Temporizador para mostrar advertencia de nombre vacío en el Inspector.
 
+    /**
+			* @brief Devuelve la etiqueta de una entidad para mostrar en la interfaz de usuario.
+      * 
+			* @param registry Referencia al Registry del sistema.
+			* @param entity La ID de la entidad de la que se quiere obtener la etiqueta.
+      * 
+			* @return std::string La etiqueta de la entidad, que es su nombre si tiene un componente Name, o "Entity <ID>" si no lo tiene.
+      * 
+			* @note Este método se utiliza para mostrar una representación legible de la entidad 
+      * en el Outliner y en otros lugares de la interfaz de usuario.
+      */
     [[nodiscard]] std::string
       EntityLabel(Registry& registry, EntityID entity) const {
       if (auto* n = registry.TryGetComponent<ECS::Name>(entity)) {
@@ -449,11 +484,17 @@ namespace ECS {
       return "Entity " + std::to_string(entity);
     }
 
-    //Dibuja un botón pequeño de eliminar alineado a la derecha de la línea actual.
-    //Devuelve true si se presionó (el llamador debe hacer el RemoveComponent y salir
-    //del bloque inmediatamente, ya que la referencia al componente queda invalidada).
+		/**
+			* @brief Muestra un botón de eliminación de componente en el Inspector.
+      * 
+			* @param label La etiqueta del botón.
+      * 
+			* @return true si el botón fue presionado, false en caso contrario.
+      * 
+      * @note Este método se utiliza para mostrar un botón de eliminación de componente alineado a la derecha en el Inspector.
+			*/
     bool
-      RemoveComponentButton(const char* label) {
+    RemoveComponentButton(const char* label) {
       ImGui::SameLine(ImGui::GetWindowWidth() - 60.f);
       return ImGui::SmallButton(label);
     }

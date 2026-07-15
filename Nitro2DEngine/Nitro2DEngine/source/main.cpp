@@ -66,6 +66,11 @@ int main()
   registry.GetComponent<ECS::Transform>(tri).rotation = 45.f;
   registry.AddComponent<ECS::Render>(tri, ECS::Render::Make(TRIANGLE, sf::Color::Cyan));
 
+  ECS::EntityID rec = ECS::CreateEntity(registry, "Rectangle", {350.f, 200.f });
+	registry.AddComponent<ECS::Render>(rec, ECS::Render::Make(RECTANGLE, sf::Color::Red));
+
+  
+
   ECS::EntityID cam = ECS::CreateEntity(registry, "MainCamera");
   auto& camComp = registry.AddComponent<ECS::Camera>(cam);
   camComp.followTarget = circle;

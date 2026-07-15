@@ -35,15 +35,27 @@ namespace ECS::Editor {
 		std::function<void(Registry&, EntityID)> addComponent;
 	};
 
-	class ComponentRegistry {
+	class 
+	ComponentRegistry {
 	public:
-		static ComponentRegistry& Instance() {
+		/**
+			* @brief Devuelve la instancia singleton de ComponentRegistry.
+			* 
+			* @return ComponentRegistry& Referencia a la instancia singleton de ComponentRegistry.
+			*/
+		static ComponentRegistry& 
+		Instance() {
 			static ComponentRegistry instance;
 			return instance;
 		}
 
+		/**
+			* @brief Devuelve la lista de tipos de componentes registrados.
+			* 
+			* @return const std::vector<ComponentTypeInfo>& Referencia constante a la lista de tipos de componentes registrados.
+			*/
 		[[nodiscard]] const std::vector<ComponentTypeInfo>&
-			GetTypes() const noexcept { return m_types; }
+		GetTypes() const noexcept { return m_types; }
 
 	private:
 		ComponentRegistry() {
@@ -60,8 +72,18 @@ namespace ECS::Editor {
 			// para un botón genérico.
 		}
 
-		template<typename T>
-		void Register(std::string name, std::vector<std::string> requiredNames = {}) {
+		/**
+			* @brief Registra un nuevo tipo de componente en el registro.
+			* 
+			* @tparam T El tipo de componente a registrar.
+			* @param name El nombre del componente que se mostrará en el editor.
+			* @param requiredNames Una lista de nombres de componentes requeridos que se agregarán automáticamente al agregar este componente.
+			* 
+			* @note Este método se utiliza internamente en el constructor de ComponentRegistry para registrar los tipos de componentes disponibles en el editor.
+			* @note Los componentes requeridos se agregarán automáticamente si no están presentes al agregar este componente.
+			*/
+		template<typename T> void 
+		Register(std::string name, std::vector<std::string> requiredNames = {}) {
 			ComponentTypeInfo info;
 			info.name = std::move(name);
 

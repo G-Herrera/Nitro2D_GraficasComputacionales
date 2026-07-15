@@ -103,7 +103,8 @@ namespace ECS {
 	}
 
 	sf::Vector2f
-		SteeringSystem::ComputeObstacleAvoidance(const sf::Vector2f& position,
+	SteeringSystem::ComputeObstacleAvoidance(EntityID selfId,
+			const sf::Vector2f& position,
 			const sf::Vector2f& velocity,
 			const std::vector<ObstacleData>& obstacles,
 			float lookAhead,
@@ -113,7 +114,6 @@ namespace ECS {
 		sf::Vector2f dir = Math::Normalize(velocity);
 		if (Math::LengthSquared(dir) == 0.f) return {};
 
-		//Dos puntos de "mirada" adelante: uno lejano y uno cercano
 		const sf::Vector2f ahead = position + dir * lookAhead;
 		const sf::Vector2f ahead2 = position + dir * (lookAhead * 0.5f);
 
@@ -121,6 +121,8 @@ namespace ECS {
 		float closestDist = 0.f;
 
 		for (const auto& obs : obstacles) {
+			if (obs.id == selfId) continue; // no evitarse a si mismo
+
 			const float combinedRadius = obs.radius + agentRadius;
 			const bool collision =
 				Math::Distance(obs.position, ahead) <= combinedRadius ||
@@ -138,64 +140,24 @@ namespace ECS {
 
 		if (!mostThreatening) return {};
 
-		//Fuerza perpendicular que aleja al agente del obstáculo más amenazante
 		sf::Vector2f avoidance = ahead - mostThreatening->position;
 		return Math::Normalize(avoidance) * maxSpeed;
 	}
 
 	void
-		SteeringSystem::OnUpdate(Registry& registry, float deltaTime) {
+	SteeringSystem::OnUpdate(Registry& registry, float deltaTime) {
 
-		// Obstáculos del frame (se calculan una sola vez, no por entidad)
+		// Obstáculos del frame: TODA entidad con (Transform, Obstacle),
+		// sin importar el target de nadie. Se calcula una sola vez.
 		std::vector<ObstacleData> obstacles;
 		registry.GetView<Transform, Obstacle>().Each(
-			[&obstacles](EntityID, Transform& t, Obstacle& o) {
-				obstacles.push_back({ t.position, o.radius });
+			[&obstacles](EntityID id, Transform& t, Obstacle& o) {
+				obstacles.push_back({ id, t.position, o.radius });
 			});
 
 		registry.GetView<Transform, Velocity, Acceleration, SteeringComponent>().Each(
-			[this, &registry, deltaTime, &obstacles](EntityID, Transform& transform, Velocity& vel,
+			[this, &registry, deltaTime, &obstacles](EntityID entity, Transform& transform, Velocity& vel,
 				Acceleration& accel, SteeringComponent& steer) {
-
-					sf::Vector2f steeringForce{ 0.f, 0.f };
-
-					if (steer.target != NULL_ENTITY && registry.IsAlive(steer.target)) {
-						if (auto* targetTransform = registry.TryGetComponent<Transform>(steer.target)) {
-
-							if (steer.seekEnabled) {
-								steeringForce += ComputeSeek(transform.position, vel.velocity,
-									targetTransform->position, steer.maxSpeed);
-							}
-							if (steer.fleeEnabled) {
-								steeringForce += ComputeFlee(transform.position, vel.velocity,
-									targetTransform->position, steer.maxSpeed);
-							}
-							if (steer.arriveEnabled) {
-								steeringForce += ComputeArrive(transform.position, vel.velocity,
-									targetTransform->position, steer.maxSpeed,
-									steer.slowingRadius);
-							}
-							if (steer.pursuitEnabled) {
-								sf::Vector2f targetVel{ 0.f, 0.f };
-								if (auto* targetVelocity = registry.TryGetComponent<Velocity>(steer.target)) {
-									targetVel = targetVelocity->velocity;
-								}
-								steeringForce += ComputePursuit(transform.position, vel.velocity,
-									targetTransform->position, targetVel,
-									steer.maxSpeed, steer.pursuitPredictionTime);
-							}
-						}
-					}
-
-					if (steer.wanderEnabled) {
-						steeringForce += ComputeWander(transform.position, vel.velocity,
-							steer, deltaTime);
-					}
-
-					if (steer.obstacleAvoidanceEnabled) {
-						steeringForce += ComputeObstacleAvoidance(transform.position, vel.velocity,
-							obstacles, steer.obstacleLookAhead, steer.obstacleRadius, steer.maxSpeed);
-					}
 
 					const bool anyBehaviorEnabled =
 						steer.seekEnabled || steer.fleeEnabled || steer.arriveEnabled ||
@@ -207,8 +169,61 @@ namespace ECS {
 						return; // sin comportamiento activo: la entidad no se mueve este frame
 					}
 
-					//Limitar la fuerza de steering resultante
-					steeringForce = Math::Truncate(steeringForce, steer.maxForce);
+					// --- Steering por prioridades (weighted truncated running sum) ---
+					// Cada comportamiento se recorta al presupuesto de fuerza que
+					// aún queda antes de sumarse. Así, un comportamiento de alta
+					// prioridad (Obstacle Avoidance) SIEMPRE se aplica al completo
+					// antes de que los demás compitan por lo que sobra, en vez de
+					// sumarse todo junto y arriesgarse a diluirse en el truncado final.
+					sf::Vector2f steeringForce{ 0.f, 0.f };
+					float forceBudget = steer.maxForce;
+
+					auto accumulate = [&](const sf::Vector2f& force) {
+						if (forceBudget <= 0.f) return;
+						const sf::Vector2f clipped = Math::Truncate(force, forceBudget);
+						steeringForce += clipped;
+						forceBudget -= Math::Length(clipped);
+						};
+
+					// Prioridad 1 (más alta): evitar obstáculos. Independiente de target.
+					if (steer.obstacleAvoidanceEnabled) {
+						accumulate(ComputeObstacleAvoidance(entity, transform.position, vel.velocity,
+							obstacles, steer.obstacleLookAhead, steer.obstacleRadius, steer.maxSpeed));
+					}
+
+					// Prioridad 2: comportamientos que dependen de target
+					if (steer.target != NULL_ENTITY && registry.IsAlive(steer.target)) {
+						if (auto* targetTransform = registry.TryGetComponent<Transform>(steer.target)) {
+
+							if (steer.fleeEnabled) {
+								accumulate(ComputeFlee(transform.position, vel.velocity,
+									targetTransform->position, steer.maxSpeed));
+							}
+							if (steer.arriveEnabled) {
+								accumulate(ComputeArrive(transform.position, vel.velocity,
+									targetTransform->position, steer.maxSpeed, steer.slowingRadius));
+							}
+							if (steer.pursuitEnabled) {
+								sf::Vector2f targetVel{ 0.f, 0.f };
+								if (auto* targetVelocity = registry.TryGetComponent<Velocity>(steer.target)) {
+									targetVel = targetVelocity->velocity;
+								}
+								accumulate(ComputePursuit(transform.position, vel.velocity,
+									targetTransform->position, targetVel,
+									steer.maxSpeed, steer.pursuitPredictionTime));
+							}
+							if (steer.seekEnabled) {
+								accumulate(ComputeSeek(transform.position, vel.velocity,
+									targetTransform->position, steer.maxSpeed));
+							}
+						}
+					}
+
+					// Prioridad 3 (más baja): Wander, es solo relleno cosmético
+					if (steer.wanderEnabled) {
+						accumulate(ComputeWander(transform.position, vel.velocity, steer, deltaTime));
+					}
+
 					accel.acceleration = steeringForce;
 
 					//Integración física: acceleration -> velocity -> position

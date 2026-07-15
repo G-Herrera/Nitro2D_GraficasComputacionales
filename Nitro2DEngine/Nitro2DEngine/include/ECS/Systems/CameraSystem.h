@@ -24,6 +24,16 @@ namespace ECS {
 		explicit CameraSystem(Window& window) noexcept : m_window(window){}
 		~CameraSystem() = default;
 
+
+		/**
+			* @brief Se llama cada frame, aquí va la lógica principal del sistema.
+			* 
+			* @param registry Referencia al Registry del sistema.
+			* @param deltaTime Tiempo transcurrido desde el último frame.
+			* 
+			* @note Este método busca la cámara activa (Transform + Camera), 
+			* interpola su posición hacia el objetivo a seguir y aplica la vista resultante a la ventana.
+			*/
 		void 
 		OnUpdate(Registry& registry, float deltaTime) override {
 			registry.GetView<Transform, Camera>().Each([this, &registry, deltaTime](EntityID, Transform& camT, Camera& cam) {
@@ -46,7 +56,7 @@ namespace ECS {
 			});
 		}
 	private:
-		Window& m_window;
+		Window& m_window;///< Referencia a la ventana donde se aplicará la vista de la cámara.
 	};
 
 }

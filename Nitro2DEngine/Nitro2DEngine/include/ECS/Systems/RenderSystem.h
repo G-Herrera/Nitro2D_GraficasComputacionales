@@ -23,7 +23,17 @@ namespace ECS {
 	public:
 		explicit RenderSystem(Window& window) noexcept : m_window(window){}
 
-		void OnUpdate(Registry& registry, float/*deltaTime*/) override {
+		/**
+			* @brief Se llama cada frame, aquí va la lógica principal del sistema.
+			* 
+			* @param registry Referencia al Registry del sistema.
+			* @param deltaTime Tiempo transcurrido desde el último frame.
+			* 
+			* @note Este método recorre todas las entidades que tengan a la vez Transform + Render, 
+			*	vuelca el Transform sobre sf::Shape y la dibuja en la ventana.
+			*/
+		void 
+		OnUpdate(Registry& registry, float/*deltaTime*/) override {
 
 				registry.GetView<Transform, Render>().Each([this](EntityID /*entity*/, const Transform& t, const Render& r) {
 				if (!r.shape || !r.visible) return;
@@ -39,7 +49,7 @@ namespace ECS {
 
 		}
 	private:
-		Window& m_window;
+		Window& m_window;///< Referencia a la ventana donde se dibujarán las entidades con componentes Render.
 	};
 
 }
