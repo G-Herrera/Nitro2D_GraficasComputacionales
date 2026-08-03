@@ -274,29 +274,13 @@ namespace ECS
   {
     const sf::Vector2f& agentPosition = transform.position;
 
-    // --------------------------------------------------
-    // Colores del debug del agente
-    // --------------------------------------------------
-
-    const sf::Color velocityColor{0, 255, 0, 230};
-
-    const sf::Color predictedColor{255, 255, 255, 230};
-
-    const sf::Color nearestColor{255, 0, 255, 230};
-
-    const sf::Color targetColor{255, 50, 50, 230};
-
-    const sf::Color pathForceColor{0, 150, 255, 230};
-
-    const sf::Color separationColor{180, 80, 255, 230};
-
-    const sf::Color finalForceColor{255, 140, 0, 230};
+      
 
     // --------------------------------------------------
     // Velocidad
     // --------------------------------------------------
 
-    if (debug.drawVelocity) DrawVector(agentPosition, debug.velocity, debug.velocityScale, velocityColor);
+    if (debug.drawVelocity) DrawVector(agentPosition, debug.velocity, debug.velocityScale, debug.velocityColor);
 
     // --------------------------------------------------
     // Posición futura predicha
@@ -304,9 +288,9 @@ namespace ECS
 
     if (debug.drawPredictedPosition)
     {
-      DrawLine(agentPosition, debug.predictedPosition, predictedColor);
+      DrawLine(agentPosition, debug.predictedPosition, debug.predictedPositionColor);
 
-      DrawPoint(debug.predictedPosition, 4.f, predictedColor);
+      DrawPoint(debug.predictedPosition, 4.f, debug.predictedPositionColor);
     }
 
     // --------------------------------------------------
@@ -315,9 +299,9 @@ namespace ECS
 
     if (debug.drawNearestPathPoint)
     {
-      DrawLine(debug.predictedPosition, debug.nearestPathPoint, nearestColor);
+      DrawLine(debug.predictedPosition, debug.nearestPathPoint, debug.nearestPathPointColor);
 
-      DrawPoint(debug.nearestPathPoint, 4.f, nearestColor);
+      DrawPoint(debug.nearestPathPoint, 4.f, debug.nearestPathPointColor);
     }
 
     // --------------------------------------------------
@@ -326,9 +310,9 @@ namespace ECS
 
     if (debug.drawPathTargetPoint)
     {
-      DrawLine(debug.nearestPathPoint, debug.pathTargetPoint, targetColor);
+      DrawLine(debug.nearestPathPoint, debug.pathTargetPoint, debug.pathTargetPointColor);
 
-      DrawPoint(debug.pathTargetPoint, 5.f, targetColor);
+      DrawPoint(debug.pathTargetPoint, 5.f, debug.pathTargetPointColor);
     }
 
     // --------------------------------------------------
@@ -337,7 +321,7 @@ namespace ECS
 
     if (debug.drawPathFollowingForce)
     {
-      DrawVector(agentPosition, debug.pathFollowingForce, debug.forceScale, pathForceColor);
+      DrawVector(agentPosition, debug.pathFollowingForce, debug.forceScale, debug.pathFollowingForceColor);
     }
 
     // --------------------------------------------------
@@ -347,7 +331,7 @@ namespace ECS
 
     if (debug.drawSeparationForce)
     {
-      DrawVector(agentPosition, debug.separationForce, debug.forceScale, separationColor);
+      DrawVector(agentPosition, debug.separationForce, debug.forceScale, debug.separationForceColor);
     }
 
     // --------------------------------------------------
@@ -356,7 +340,7 @@ namespace ECS
 
     if (debug.drawFinalSteeringForce)
     {
-      DrawVector( agentPosition, debug.finalSteeringForce, debug.forceScale, finalForceColor);
+      DrawVector( agentPosition, debug.finalSteeringForce, debug.forceScale, debug.finalSteeringForceColor);
     }
   }
 }
