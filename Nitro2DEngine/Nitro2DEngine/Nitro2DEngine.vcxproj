@@ -192,6 +192,7 @@
     <ClInclude Include="include\ECS\Components\PathComponent.h" />
     <ClInclude Include="include\ECS\Components\Render.h" />
     <ClInclude Include="include\ECS\Components\SteeringComponent.h" />
+    <ClInclude Include="include\ECS\Components\SteeringDebugComponent.h" />
     <ClInclude Include="include\ECS\Components\Transform.h" />
     <ClInclude Include="include\ECS\Components\Velocity.h" />
     <ClInclude Include="include\ECS\Editor\ComponentRegistry.h" />

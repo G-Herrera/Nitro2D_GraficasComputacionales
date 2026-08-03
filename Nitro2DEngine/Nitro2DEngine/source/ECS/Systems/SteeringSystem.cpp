@@ -103,7 +103,7 @@ namespace ECS {
 		return ComputeSeek(position, velocity, predictedPos, maxSpeed);
 	}
 
-	sf::Vector2f
+	PathFollowingResult
 		SteeringSystem::ComputePathFollowing(
 			const sf::Vector2f& position,
 			const sf::Vector2f& velocity,
@@ -111,58 +111,61 @@ namespace ECS {
 			float maxSpeed,
 			float aheadDistance) const noexcept
 	{
-		// Un path necesita al menos dos puntos para formar un segmento.
+		PathFollowingResult result;
+
+		// Se necesitan al menos dos puntos para formar un segmento.
 		if (path.points.size() < 2)
 		{
-			return {};
+			return result;
 		}
 
-		// Direccion actual del agente (o una por defecto si esta detenido).
-		sf::Vector2f forward = Math::Normalize(velocity);
+		// Dirección actual del agente.
+		sf::Vector2f forward =
+			Math::Normalize(velocity);
+
+		// Dirección temporal para un agente detenido.
 		if (Math::LengthSquared(forward) <= 0.00001f)
 		{
 			forward = { 1.f, 0.f };
 		}
 
-		// Prediccion de la posicion futura del agente: es la herramienta
-		// ANTICIPATORIA del algoritmo (Reynolds / Nature of Code). En vez
-		// de reaccionar a donde el agente ESTA, reacciona a donde VA A
-		// ESTAR, lo que permite empezar a corregir el rumbo antes de
-		// salirse del camino, no despues de haberlo hecho.
-		const float predictionDistance = std::max(20.f, aheadDistance * 0.5f);
-		const sf::Vector2f predictedPosition = position + forward * predictionDistance;
+		// Predecir la posición futura del kart.
+		const float predictionDistance =
+			std::max(20.f, aheadDistance * 0.5f);
 
-		// Punto mas cercano de la LINEA CENTRAL a donde el agente va a
-		// estar. Este punto siempre cae SOBRE la polilinea central,
-		// nunca fuera de ella (a diferencia de predictedPosition, que
-		// puede estar a cualquier distancia del camino).
+		result.predictedPosition =
+			position + forward * predictionDistance;
+
+		// Encontrar la proyección de la posición futura
+		// sobre la línea central del path.
 		const Math::NearestPathResult nearest =
-			Math::NearestPointOnPath(path.points, path.closed, predictedPosition);
+			Math::NearestPointOnPath(
+				path.points,
+				path.closed,
+				result.predictedPosition);
 
-		// Punto objetivo: se avanza `aheadDistance` a partir del punto
-		// CENTRAL mas cercano (no desde la posicion predicha), por lo
-		// que el objetivo siempre esta sobre la linea central amarilla,
-		// nunca sobre el borde del corredor.
-		const sf::Vector2f targetPoint =
-			Math::PointAheadOnPath(path.points, path.closed,
-				nearest.segmentIndex, nearest.point, aheadDistance);
+		result.nearestPoint =
+			nearest.point;
 
-		// A diferencia de la version anterior, YA NO se corta la fuerza a
-		// cero cuando la prediccion cae dentro de path.radius: se busca
-		// SIEMPRE el punto objetivo sobre la linea central y se aplica
-		// Seek de forma continua.
-		//
-		// Esto es suficiente para lograr correccion suave-dentro /
-		// fuerte-fuera SIN una rama explicita: ComputeSeek es
-		// autolimitante. Su magnitud es |desired - velocity|. Si el
-		// agente ya avanza alineado hacia targetPoint a velocidad
-		// cercana a maxSpeed, "desired" y "velocity" son casi iguales y
-		// la correccion es pequeña (suave, en linea recta o curva
-		// suave). Si el agente se desvia del camino, el angulo entre su
-		// velocidad actual y la direccion deseada crece, y la magnitud
-		// de la correccion crece proporcionalmente, sin que tengamos
-		// que calcular esa proporcion a mano.
-		return ComputeSeek(position, velocity, targetPoint, maxSpeed);
+		// Avanzar sobre la línea central para encontrar
+		// el punto que el agente perseguirá.
+		result.targetPoint =
+			Math::PointAheadOnPath(
+				path.points,
+				path.closed,
+				nearest.segmentIndex,
+				nearest.point,
+				aheadDistance);
+
+		// Generar la fuerza continua hacia el objetivo adelantado.
+		result.force =
+			ComputeSeek(
+				position,
+				velocity,
+				result.targetPoint,
+				maxSpeed);
+
+		return result;
 	}
 
 	sf::Vector2f
@@ -222,16 +225,32 @@ namespace ECS {
 			[this, &registry, deltaTime, &obstacles](EntityID entity, Transform& transform, Velocity& vel,
 				Acceleration& accel, SteeringComponent& steer) {
 
+					SteeringDebugComponent* debug = registry.TryGetComponent<SteeringDebugComponent>(entity);
+
 					const bool anyBehaviorEnabled =
 						steer.seekEnabled || steer.fleeEnabled || steer.arriveEnabled ||
 						steer.pursuitEnabled || steer.wanderEnabled || steer.obstacleAvoidanceEnabled || 
 						steer.pathFollowingEnabled;
 
-					if (!anyBehaviorEnabled) {
+					if (!anyBehaviorEnabled)
+					{
 						accel.acceleration = { 0.f, 0.f };
+
 						vel.velocity = { 0.f, 0.f };
+
+						if (auto* debug = registry.TryGetComponent<SteeringDebugComponent>(entity))
+						{
+							debug->velocity = { 0.f, 0.f };
+
+							debug->pathFollowingForce = { 0.f, 0.f };
+
+							debug->separationForce = { 0.f, 0.f };
+
+							debug->finalSteeringForce = { 0.f, 0.f };
+						}
+
 						return; // sin comportamiento activo: la entidad no se mueve este frame
-					}
+					} 
 
 					// --- Steering por prioridades (weighted truncated running sum) ---
 					// Cada comportamiento se recorta al presupuesto de fuerza que
@@ -262,15 +281,37 @@ namespace ECS {
 						registry.IsAlive(steer.pathEntity))
 					{
 						if (auto* path =
-							registry.TryGetComponent<PathComponent>(steer.pathEntity))
+							registry.TryGetComponent<PathComponent>(
+								steer.pathEntity))
 						{
-							accumulate(
+							const PathFollowingResult pathResult =
 								ComputePathFollowing(
 									transform.position,
 									vel.velocity,
 									*path,
 									steer.maxSpeed,
-									steer.pathAheadDistance));
+									steer.pathAheadDistance);
+
+							accumulate(pathResult.force);
+
+							// Escribir la información geométrica únicamente si
+							// la entidad posee SteeringDebugComponent.
+							if (auto* debug =
+								registry.TryGetComponent<SteeringDebugComponent>(
+									entity))
+							{
+								debug->predictedPosition =
+									pathResult.predictedPosition;
+
+								debug->nearestPathPoint =
+									pathResult.nearestPoint;
+
+								debug->pathTargetPoint =
+									pathResult.targetPoint;
+
+								debug->pathFollowingForce =
+									pathResult.force;
+							}
 						}
 					}
 
@@ -309,11 +350,22 @@ namespace ECS {
 
 					accel.acceleration = steeringForce;
 
-					//Integración física: acceleration -> velocity -> position
-					vel.velocity += accel.acceleration * deltaTime;
-					vel.velocity = Math::Truncate(vel.velocity, steer.maxSpeed);
+					// Guardar la fuerza final ANTES de integrar el movimiento.
+					if (auto* debug = registry.TryGetComponent<SteeringDebugComponent>(entity))
+					{
+						debug->finalSteeringForce = steeringForce;
+					}
 
+					// Integración física: acceleration -> velocity -> position.
+					vel.velocity += accel.acceleration * deltaTime;
+					vel.velocity = Math::Truncate(vel.velocity,steer.maxSpeed);
 					transform.position += vel.velocity * deltaTime;
+
+					// Guardar la velocidad final del frame.
+					if (auto* debug = registry.TryGetComponent<SteeringDebugComponent>(entity))
+					{
+						debug->velocity = vel.velocity;
+					}
 			});
 	}
 }

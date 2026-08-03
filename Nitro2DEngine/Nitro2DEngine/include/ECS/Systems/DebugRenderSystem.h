@@ -8,6 +8,8 @@ namespace ECS
   class Registry;
   struct PathComponent;
   struct DebugPathComponent;
+  struct Transform;
+  struct SteeringDebugComponent;
 
   class DebugRenderSystem final : public System
   {
@@ -39,6 +41,26 @@ namespace ECS
     void DrawSamplePoints(
       const PathComponent& path,
       const DebugPathComponent& debug);
+
+    void DrawAgentDebug(
+      const Transform& transform,
+      const SteeringDebugComponent& debug);
+
+    void DrawVector(
+      const sf::Vector2f& origin,
+      const sf::Vector2f& vector,
+      float scale,
+      const sf::Color& color);
+
+    void DrawLine(
+      const sf::Vector2f& start,
+      const sf::Vector2f& end,
+      const sf::Color& color);
+
+    void DrawPoint(
+      const sf::Vector2f& position,
+      float radius,
+      const sf::Color& color);
 
     Window& m_window;
   };
