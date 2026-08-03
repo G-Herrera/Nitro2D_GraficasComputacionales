@@ -2,6 +2,7 @@
 #include "ECS/Registry.h"
 #include "ECS/Components/Transform.h"
 #include "ECS/Components/Name.h"
+#include "ECS/Components/Render.h"
 // ======================================================
 // ECS :: EntityFactory.h
 //
@@ -34,6 +35,49 @@ namespace ECS {
 		EntityID entity = registry.CreateEntity();
 		registry.AddComponent<Transform>(entity, position);
 		registry.AddComponent<Name>(entity, name);
+		return entity;
+	}
+
+	// Crea la entidad de fondo del circuito: una entidad ESTÁTICA
+	// (sin Velocity/Acceleration/SteeringComponent) con un Render
+	// rectangular del tamaño EXACTO de la textura cargada, centrado
+	// en el origen del mundo (0,0).
+	//
+	// IMPORTANTE: llamar a esta función ANTES de crear cualquier otra
+	// entidad con Render (karts, etc). RenderSystem dibuja en el orden
+	// de inserción del ComponentPool<Render>; el circuito debe insertarse
+	// primero para quedar detrás de todo lo demás.
+	inline EntityID
+		CreateTrackBackground(Registry& registry, const std::string& texturePath,
+			const std::string& name = "Track") {
+		EntityID entity = CreateEntity(registry, name, { 0.f, 0.f });
+
+		Render render = Render::Make(RECTANGLE, sf::Color::White);
+
+		auto rect = std::dynamic_pointer_cast<sf::RectangleShape>(render.shape);
+		assert(rect && "CreateTrackBackground: se esperaba un sf::RectangleShape");
+
+		auto texture = std::make_shared<sf::Texture>();
+		if (texture->loadFromFile(texturePath)) {
+			const sf::Vector2f texSize(static_cast<sf::Vector2f>(texture->getSize()));
+
+			// Redimensiona el rectangulo al tamaño real de la textura
+			// ANTES de asignarla: si se asigna primero, SetTexture()
+			// calcularía el rect de UV usando el tamaño por defecto de
+			// Render::Make (100x50), y la textura quedaria mal mapeada.
+			rect->setSize(texSize);
+			rect->setOrigin(texSize / 2.f);
+
+			render.SetTexture(texture, true);
+		}
+		else {
+			ERROR("EntityFactory", "CreateTrackBackground",
+				("No se pudo cargar la textura: " + texturePath).c_str());
+		}
+
+		render.zOrder = -1000; // Fondo: siempre detras de todo, sin importar el orden de creacion
+
+		registry.AddComponent<Render>(entity, std::move(render));
 		return entity;
 	}
 }

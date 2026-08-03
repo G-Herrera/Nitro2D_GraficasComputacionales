@@ -32,23 +32,41 @@ namespace ECS {
 			* @note Este método recorre todas las entidades que tengan a la vez Transform + Render, 
 			*	vuelca el Transform sobre sf::Shape y la dibuja en la ventana.
 			*/
-		void 
+		void
 		OnUpdate(Registry& registry, float/*deltaTime*/) override {
 
-				registry.GetView<Transform, Render>().Each([this](EntityID /*entity*/, const Transform& t, const Render& r) {
-				if (!r.shape || !r.visible) return;
+			// View::Each itera en orden INVERSO al de inserción (a propósito,
+			// para permitir eliminar entidades de forma segura durante la
+			// iteración). Ese orden no es apto para dibujar, así que aquí
+			// recolectamos primero y luego ordenamos explícitamente por
+			// Render::zOrder antes de dibujar.
+			m_drawList.clear();
 
-				//Vuelca el estado del transform sobre la forma sfml
-				r.shape->setPosition(t.position);
-				r.shape->setRotation(sf::degrees(t.rotation));
-				r.shape->setScale(t.scale);
-				r.shape->setFillColor(r.fillColor);
-
-				m_window.draw(*r.shape);
+			registry.GetView<Transform, Render>().Each(
+				[this](EntityID, const Transform& t, const Render& r) {
+					if (!r.shape || !r.visible) return;
+					m_drawList.push_back({ &t, &r });
 				});
 
+			std::stable_sort(m_drawList.begin(), m_drawList.end(),
+				[](const DrawEntry& a, const DrawEntry& b) {
+					return a.render->zOrder < b.render->zOrder;
+				});
+
+			for (const auto& entry : m_drawList) {
+				entry.render->shape->setPosition(entry.transform->position);
+				entry.render->shape->setRotation(sf::degrees(entry.transform->rotation));
+				entry.render->shape->setScale(entry.transform->scale);
+				entry.render->shape->setFillColor(entry.render->fillColor);
+				m_window.draw(*entry.render->shape);
+			}
 		}
 	private:
+		struct DrawEntry {
+			const Transform* transform;
+			const Render* render;
+		};
+		std::vector<DrawEntry> m_drawList; ///< Buffer reutilizado cada frame para evitar reasignar memoria constantemente.
 		Window& m_window;///< Referencia a la ventana donde se dibujarán las entidades con componentes Render.
 	};
 

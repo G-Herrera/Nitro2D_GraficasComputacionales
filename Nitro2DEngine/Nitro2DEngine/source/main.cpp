@@ -59,6 +59,8 @@ int main()
   sf::Clock deltaClock;
   bool showDemoWindow = true;
 
+  ECS::EntityID track = ECS::CreateTrackBackground(registry, "Textures/Track.png");
+
   ECS::EntityID circle = ECS::CreateEntity(registry, "Player", { 400.f, 300.f });
   registry.AddComponent<ECS::Render>(circle, ECS::Render::Make(CIRCLE, sf::Color(100, 250, 50), "Textures/wallpaper11.jpg"));
 
