@@ -117,51 +117,52 @@ namespace ECS {
 			return {};
 		}
 
-		// Dirección actual del agente.
+		// Direccion actual del agente (o una por defecto si esta detenido).
 		sf::Vector2f forward = Math::Normalize(velocity);
-
-		// Si comienza detenido, se usa una dirección inicial por defecto.
 		if (Math::LengthSquared(forward) <= 0.00001f)
 		{
 			forward = { 1.f, 0.f };
 		}
 
-		// Predicción de la posición futura del agente.
-		const float predictionDistance =
-			std::max(20.f, aheadDistance * 0.5f);
+		// Prediccion de la posicion futura del agente: es la herramienta
+		// ANTICIPATORIA del algoritmo (Reynolds / Nature of Code). En vez
+		// de reaccionar a donde el agente ESTA, reacciona a donde VA A
+		// ESTAR, lo que permite empezar a corregir el rumbo antes de
+		// salirse del camino, no despues de haberlo hecho.
+		const float predictionDistance = std::max(20.f, aheadDistance * 0.5f);
+		const sf::Vector2f predictedPosition = position + forward * predictionDistance;
 
-		const sf::Vector2f predictedPosition =
-			position + forward * predictionDistance;
-
-		// Encontrar dónde cae la predicción respecto al camino.
+		// Punto mas cercano de la LINEA CENTRAL a donde el agente va a
+		// estar. Este punto siempre cae SOBRE la polilinea central,
+		// nunca fuera de ella (a diferencia de predictedPosition, que
+		// puede estar a cualquier distancia del camino).
 		const Math::NearestPathResult nearest =
-			Math::NearestPointOnPath(
-				path.points,
-				path.closed,
-				predictedPosition);
+			Math::NearestPointOnPath(path.points, path.closed, predictedPosition);
 
-		// Si la predicción continúa dentro del corredor permitido,
-		// no hace falta corregir la dirección.
-		if (nearest.distance <= path.radius)
-		{
-			return {};
-		}
-
-		// Si se alejó del corredor, buscar un objetivo más adelante
-		// para evitar perseguir perpendicularmente el punto más cercano.
+		// Punto objetivo: se avanza `aheadDistance` a partir del punto
+		// CENTRAL mas cercano (no desde la posicion predicha), por lo
+		// que el objetivo siempre esta sobre la linea central amarilla,
+		// nunca sobre el borde del corredor.
 		const sf::Vector2f targetPoint =
-			Math::PointAheadOnPath(
-				path.points,
-				path.closed,
-				nearest.segmentIndex,
-				nearest.point,
-				aheadDistance);
+			Math::PointAheadOnPath(path.points, path.closed,
+				nearest.segmentIndex, nearest.point, aheadDistance);
 
-		return ComputeSeek(
-			position,
-			velocity,
-			targetPoint,
-			maxSpeed);
+		// A diferencia de la version anterior, YA NO se corta la fuerza a
+		// cero cuando la prediccion cae dentro de path.radius: se busca
+		// SIEMPRE el punto objetivo sobre la linea central y se aplica
+		// Seek de forma continua.
+		//
+		// Esto es suficiente para lograr correccion suave-dentro /
+		// fuerte-fuera SIN una rama explicita: ComputeSeek es
+		// autolimitante. Su magnitud es |desired - velocity|. Si el
+		// agente ya avanza alineado hacia targetPoint a velocidad
+		// cercana a maxSpeed, "desired" y "velocity" son casi iguales y
+		// la correccion es pequeña (suave, en linea recta o curva
+		// suave). Si el agente se desvia del camino, el angulo entre su
+		// velocidad actual y la direccion deseada crece, y la magnitud
+		// de la correccion crece proporcionalmente, sin que tengamos
+		// que calcular esa proporcion a mano.
+		return ComputeSeek(position, velocity, targetPoint, maxSpeed);
 	}
 
 	sf::Vector2f
