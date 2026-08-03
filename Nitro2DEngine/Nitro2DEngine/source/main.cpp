@@ -14,6 +14,8 @@
 #include "ECS/Components/Acceleration.h"
 #include "ECS/Components/SteeringComponent.h"
 #include "ECS/Components/PathComponent.h"
+#include "ECS/Components/DebugPathComponent.h"
+#include "ECS/Systems/DebugRenderSystem.h"
 #include "Modules/Math2D.h"
 
 
@@ -44,8 +46,9 @@ int main()
   //Registro de sistemas en el ECS
   registry.AddSystem<ECS::SteeringSystem>();
   registry.AddSystem<ECS::CameraSystem>(g_window);
-  registry.AddSystem<ECS::UISystem>();
   registry.AddSystem<ECS::RenderSystem>(g_window);
+  registry.AddSystem<ECS::DebugRenderSystem>(g_window);
+  registry.AddSystem<ECS::UISystem>();
   
 
   //m_window es un puntero a sf::RenderWindow.
@@ -77,6 +80,12 @@ int main()
     { -379.7f, -169.7f },
   };
   ECS::EntityID racingPath = ECS::CreateRacingPath(registry, raceLineControlPoints, 90.f);
+
+  auto& pathDebug = registry.AddComponent<ECS::DebugPathComponent>(racingPath);
+  pathDebug.enabled = true;
+  pathDebug.drawCenterLine = true;
+  pathDebug.drawPathRadius = true;
+  pathDebug.drawSamplePoints = false;
 
   std::cout << "Path generado con " << registry.GetComponent<ECS::PathComponent>(racingPath).points.size() << " puntos\n";
 
