@@ -13,6 +13,7 @@
 #include "ECS/Components/Velocity.h"
 #include "ECS/Components/Acceleration.h"
 #include "ECS/Components/SteeringComponent.h"
+#include "ECS/Components/PathComponent.h"
 
 
 //Window* g_window = nullptr;
@@ -60,6 +61,22 @@ int main()
   bool showDemoWindow = true;
 
   ECS::EntityID track = ECS::CreateTrackBackground(registry, "Textures/Track.png");
+
+  const std::vector<sf::Vector2f> raceLineControlPoints = {
+    { -210.0f, -240.0f },
+    { 210.0f, -240.0f },
+    { 379.7f, -169.7f },
+    { 450.0f, 0.0f },
+    { 379.7f, 169.7f },
+    { 210.0f, 240.0f },
+    { -210.0f, 240.0f },
+    { -379.7f, 169.7f },
+    { -450.0f, 0.0f },
+    { -379.7f, -169.7f },
+  };
+  ECS::EntityID racingPath = ECS::CreateRacingPath(registry, raceLineControlPoints, 90.f);
+
+  std::cout << "Path generado con " << registry.GetComponent<ECS::PathComponent>(racingPath).points.size() << " puntos\n";
 
   ECS::EntityID circle = ECS::CreateEntity(registry, "Player", { 400.f, 300.f });
   registry.AddComponent<ECS::Render>(circle, ECS::Render::Make(CIRCLE, sf::Color(100, 250, 50), "Textures/wallpaper11.jpg"));

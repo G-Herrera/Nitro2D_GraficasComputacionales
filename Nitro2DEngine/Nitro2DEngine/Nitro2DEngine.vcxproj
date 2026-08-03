@@ -187,6 +187,7 @@
     <ClInclude Include="include\ECS\Components\Camera.h" />
     <ClInclude Include="include\ECS\Components\Name.h" />
     <ClInclude Include="include\ECS\Components\Obstacle.h" />
+    <ClInclude Include="include\ECS\Components\PathComponent.h" />
     <ClInclude Include="include\ECS\Components\Render.h" />
     <ClInclude Include="include\ECS\Components\SteeringComponent.h" />
     <ClInclude Include="include\ECS\Components\Transform.h" />

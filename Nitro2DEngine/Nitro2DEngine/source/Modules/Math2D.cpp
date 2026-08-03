@@ -65,4 +65,130 @@ namespace Math
     return LengthSquared(b - a);
   }
 
+  // ================= Geometria de Path =================
+
+  sf::Vector2f ProjectPointOnSegment(const sf::Vector2f& p,
+    const sf::Vector2f& a, const sf::Vector2f& b) noexcept
+  {
+    const sf::Vector2f ab = b - a;
+    const float abLenSq = LengthSquared(ab);
+
+    if (abLenSq <= 0.00001f) return a; // segmento degenerado (a == b)
+
+    float t = ((p.x - a.x) * ab.x + (p.y - a.y) * ab.y) / abLenSq;
+    t = std::clamp(t, 0.f, 1.f);
+
+    return a + ab * t;
+  }
+
+  NearestPathResult NearestPointOnPath(
+    const std::vector<sf::Vector2f>& points, bool closed,
+    const sf::Vector2f& p) noexcept
+  {
+    NearestPathResult result;
+    result.distance = std::numeric_limits<float>::max();
+
+    if (points.empty()) return result;
+
+    if (points.size() == 1) {
+      result.point = points[0];
+      result.distance = Distance(p, points[0]);
+      return result;
+    }
+
+    const std::size_t segmentCount = closed ? points.size() : points.size() - 1;
+
+    for (std::size_t i = 0; i < segmentCount; ++i) {
+      const sf::Vector2f& a = points[i];
+      const sf::Vector2f& b = points[(i + 1) % points.size()];
+
+      const sf::Vector2f candidate = ProjectPointOnSegment(p, a, b);
+      const float dist = Distance(p, candidate);
+
+      if (dist < result.distance) {
+        result.distance = dist;
+        result.point = candidate;
+        result.segmentIndex = i;
+      }
+    }
+
+    return result;
+  }
+
+  sf::Vector2f PointAheadOnPath(
+    const std::vector<sf::Vector2f>& points, bool closed,
+    std::size_t fromSegmentIndex, const sf::Vector2f& fromPoint,
+    float distanceAhead) noexcept
+  {
+    if (points.empty()) return fromPoint;
+
+    const std::size_t pointCount = points.size();
+    const std::size_t segmentCount = closed ? pointCount : pointCount - 1;
+    if (segmentCount == 0) return points[0];
+
+    sf::Vector2f current = fromPoint;
+    std::size_t segIndex = fromSegmentIndex % segmentCount;
+    float remaining = distanceAhead;
+
+    // Recorre segmento por segmento consumiendo `remaining` hasta
+    // encontrar donde cae el punto objetivo. Como maximo una vuelta
+    // completa al path (segmentCount+1 iteraciones) para evitar
+    // bucles infinitos si distanceAhead es mayor que el path entero.
+    for (std::size_t iterations = 0; iterations < segmentCount + 1; ++iterations) {
+      const sf::Vector2f segEnd = points[(segIndex + 1) % pointCount];
+      const float segLen = Distance(current, segEnd);
+
+      if (remaining <= segLen) {
+        const sf::Vector2f dir = (segLen > 0.00001f)
+          ? (segEnd - current) / segLen
+          : sf::Vector2f{ 0.f, 0.f };
+        return current + dir * remaining;
+      }
+
+      remaining -= segLen;
+      current = segEnd;
+      segIndex = (segIndex + 1) % segmentCount;
+
+      if (!closed && segIndex == 0) {
+        return points.back(); // path abierto: no hay mas camino, quedamos al final
+      }
+    }
+
+    return current;
+  }
+
+  std::vector<sf::Vector2f> BuildClosedCatmullRom(
+    const std::vector<sf::Vector2f>& controlPoints,
+    int samplesPerSegment) noexcept
+  {
+    std::vector<sf::Vector2f> result;
+    const std::size_t n = controlPoints.size();
+
+    if (n < 3 || samplesPerSegment < 1) return controlPoints;
+
+    const float step = 1.f / static_cast<float>(samplesPerSegment);
+
+    for (std::size_t i = 0; i < n; ++i) {
+      const sf::Vector2f& p0 = controlPoints[(i + n - 1) % n];
+      const sf::Vector2f& p1 = controlPoints[i];
+      const sf::Vector2f& p2 = controlPoints[(i + 1) % n];
+      const sf::Vector2f& p3 = controlPoints[(i + 2) % n];
+
+      for (int s = 0; s < samplesPerSegment; ++s) {
+        const float t = step * static_cast<float>(s);
+        const float t2 = t * t;
+        const float t3 = t2 * t;
+
+        const sf::Vector2f point =
+          0.5f * ((2.f * p1) +
+            (-p0 + p2) * t +
+            (2.f * p0 - 5.f * p1 + 4.f * p2 - p3) * t2 +
+            (-p0 + 3.f * p1 - 3.f * p2 + p3) * t3);
+
+        result.push_back(point);
+      }
+    }
+
+    return result;
+  }
 }
