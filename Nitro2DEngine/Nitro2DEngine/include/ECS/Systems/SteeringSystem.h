@@ -3,6 +3,7 @@
 #include "ECS/System.h"
 #include "ECS/Components/SteeringComponent.h"
 #include "ECS/Components/Obstacle.h"
+#include "ECS/Components/PathComponent.h"
 //=========================================================
 // ECS::Systems/SteeringSystem.h
 //
@@ -160,6 +161,29 @@ namespace ECS {
 				const sf::Vector2f& targetVelocity,
 				float maxSpeed,
 				float predictionTime) const noexcept;
+
+	/**
+		* @brief Calcula una fuerza para mantener al agente siguiendo una polilinea.
+		*
+		* @param position Posicion actual del agente.
+		* @param velocity Velocidad actual del agente.
+		* @param path Camino que debe seguir.
+		* @param maxSpeed Velocidad maxima del agente.
+		* @param aheadDistance Distancia que se avanza sobre el path para elegir el objetivo.
+		*
+		* @return Fuerza de steering hacia un punto adelantado del path.
+		*
+		* @note Primero predice la posicion futura del agente. Si esa prediccion
+		* queda fuera del radio permitido del camino, busca un punto mas adelante
+		* sobre la polilinea y aplica Seek hacia el.
+		*/
+		[[nodiscard]] sf::Vector2f
+			ComputePathFollowing(
+				const sf::Vector2f& position,
+				const sf::Vector2f& velocity,
+				const PathComponent& path,
+				float maxSpeed,
+				float aheadDistance) const noexcept;
 
 		/**
 			* @brief Calcula el vector de steering para evitar obstáculos.

@@ -6,6 +6,7 @@
 #include "ECS/Components/SteeringComponent.h"
 #include "ECS/Components/Obstacle.h"
 #include "Modules/Math2D.h"
+#include "ECS/Components/PathComponent.h"
 #include <cmath>
 #include <random>
 
@@ -103,6 +104,67 @@ namespace ECS {
 	}
 
 	sf::Vector2f
+		SteeringSystem::ComputePathFollowing(
+			const sf::Vector2f& position,
+			const sf::Vector2f& velocity,
+			const PathComponent& path,
+			float maxSpeed,
+			float aheadDistance) const noexcept
+	{
+		// Un path necesita al menos dos puntos para formar un segmento.
+		if (path.points.size() < 2)
+		{
+			return {};
+		}
+
+		// Dirección actual del agente.
+		sf::Vector2f forward = Math::Normalize(velocity);
+
+		// Si comienza detenido, se usa una dirección inicial por defecto.
+		if (Math::LengthSquared(forward) <= 0.00001f)
+		{
+			forward = { 1.f, 0.f };
+		}
+
+		// Predicción de la posición futura del agente.
+		const float predictionDistance =
+			std::max(20.f, aheadDistance * 0.5f);
+
+		const sf::Vector2f predictedPosition =
+			position + forward * predictionDistance;
+
+		// Encontrar dónde cae la predicción respecto al camino.
+		const Math::NearestPathResult nearest =
+			Math::NearestPointOnPath(
+				path.points,
+				path.closed,
+				predictedPosition);
+
+		// Si la predicción continúa dentro del corredor permitido,
+		// no hace falta corregir la dirección.
+		if (nearest.distance <= path.radius)
+		{
+			return {};
+		}
+
+		// Si se alejó del corredor, buscar un objetivo más adelante
+		// para evitar perseguir perpendicularmente el punto más cercano.
+		const sf::Vector2f targetPoint =
+			Math::PointAheadOnPath(
+				path.points,
+				path.closed,
+				nearest.segmentIndex,
+				nearest.point,
+				aheadDistance);
+
+		return ComputeSeek(
+			position,
+			velocity,
+			targetPoint,
+			maxSpeed);
+	}
+
+	sf::Vector2f
 	SteeringSystem::ComputeObstacleAvoidance(EntityID selfId,
 			const sf::Vector2f& position,
 			const sf::Vector2f& velocity,
@@ -161,7 +223,8 @@ namespace ECS {
 
 					const bool anyBehaviorEnabled =
 						steer.seekEnabled || steer.fleeEnabled || steer.arriveEnabled ||
-						steer.pursuitEnabled || steer.wanderEnabled || steer.obstacleAvoidanceEnabled;
+						steer.pursuitEnabled || steer.wanderEnabled || steer.obstacleAvoidanceEnabled || 
+						steer.pathFollowingEnabled;
 
 					if (!anyBehaviorEnabled) {
 						accel.acceleration = { 0.f, 0.f };
@@ -191,7 +254,26 @@ namespace ECS {
 							obstacles, steer.obstacleLookAhead, steer.obstacleRadius, steer.maxSpeed));
 					}
 
-					// Prioridad 2: comportamientos que dependen de target
+					// Prioridad 2: seguir o recuperar el camino.
+					// No utiliza SteeringComponent::target; utiliza pathEntity.
+					if (steer.pathFollowingEnabled &&
+						steer.pathEntity != NULL_ENTITY &&
+						registry.IsAlive(steer.pathEntity))
+					{
+						if (auto* path =
+							registry.TryGetComponent<PathComponent>(steer.pathEntity))
+						{
+							accumulate(
+								ComputePathFollowing(
+									transform.position,
+									vel.velocity,
+									*path,
+									steer.maxSpeed,
+									steer.pathAheadDistance));
+						}
+					}
+
+					// Prioridad 3: comportamientos que dependen de target
 					if (steer.target != NULL_ENTITY && registry.IsAlive(steer.target)) {
 						if (auto* targetTransform = registry.TryGetComponent<Transform>(steer.target)) {
 
@@ -219,7 +301,7 @@ namespace ECS {
 						}
 					}
 
-					// Prioridad 3 (más baja): Wander, es solo relleno cosmético
+					// Prioridad 4 (más baja): Wander, es solo relleno cosmético
 					if (steer.wanderEnabled) {
 						accumulate(ComputeWander(transform.position, vel.velocity, steer, deltaTime));
 					}
