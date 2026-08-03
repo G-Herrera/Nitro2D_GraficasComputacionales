@@ -2,8 +2,10 @@
 #include "Prerequisites.h"
 #include "ECS/System.h"
 #include "ECS/Components/SteeringComponent.h"
+#include "ECS/Components/SteeringDebugComponent.h"
 #include "ECS/Components/Obstacle.h"
 #include "ECS/Components/PathComponent.h"
+
 //=========================================================
 // ECS::Systems/SteeringSystem.h
 //
@@ -35,6 +37,22 @@ namespace ECS {
 		EntityID id;
 		sf::Vector2f position;
 		float radius;
+	};
+
+	/**
+ * @brief Resultado completo del comportamiento Path Following.
+ *
+ * Contiene la fuerza de steering y los datos geométricos
+ * intermedios utilizados para calcularla. Estos datos pueden
+ * almacenarse en SteeringDebugComponent sin repetir cálculos.
+ */
+	struct 
+	PathFollowingResult {
+		sf::Vector2f force{ 0.f, 0.f };
+
+		sf::Vector2f predictedPosition{ 0.f, 0.f };
+		sf::Vector2f nearestPoint{ 0.f, 0.f };
+		sf::Vector2f targetPoint{ 0.f, 0.f };
 	};
 
 	class 
@@ -177,7 +195,7 @@ namespace ECS {
 		* queda fuera del radio permitido del camino, busca un punto mas adelante
 		* sobre la polilinea y aplica Seek hacia el.
 		*/
-		[[nodiscard]] sf::Vector2f
+		[[nodiscard]] PathFollowingResult
 			ComputePathFollowing(
 				const sf::Vector2f& position,
 				const sf::Vector2f& velocity,

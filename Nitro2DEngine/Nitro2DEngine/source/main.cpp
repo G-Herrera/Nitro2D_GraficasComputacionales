@@ -16,6 +16,7 @@
 #include "ECS/Components/PathComponent.h"
 #include "ECS/Components/DebugPathComponent.h"
 #include "ECS/Systems/DebugRenderSystem.h"
+#include "ECS/Components/SteeringDebugComponent.h"
 #include "Modules/Math2D.h"
 
 
@@ -109,6 +110,10 @@ int main()
   auto& playerVelocity = registry.AddComponent<ECS::Velocity>(circle);
   registry.AddComponent<ECS::Acceleration>(circle);
   auto& playerSteering = registry.AddComponent<ECS::SteeringComponent>(circle);
+
+	//Habilitar el debug de steering para el jugador
+  auto& playerDebug = registry.AddComponent<ECS::SteeringDebugComponent>(circle);
+  playerDebug.enabled = true;
 
 	//Configuración inicial de la velocidad del jugador para que se mueva a lo largo del path
   playerVelocity.velocity =playerInitialDirection * 80.f;

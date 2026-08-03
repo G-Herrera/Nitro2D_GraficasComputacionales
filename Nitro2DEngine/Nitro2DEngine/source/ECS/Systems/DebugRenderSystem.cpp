@@ -2,39 +2,57 @@
 #include "ECS/Registry.h"
 #include "ECS/Components/PathComponent.h"
 #include "ECS/Components/DebugPathComponent.h"
+#include "ECS/Components/Transform.h"
+#include "ECS/Components/SteeringDebugComponent.h"
 #include "Modules/Math2D.h"
 
 namespace ECS
 {
-  void DebugRenderSystem::OnUpdate(
-    Registry& registry,
-    float deltaTime)
+  void
+    DebugRenderSystem::OnUpdate(Registry& registry, float deltaTime)
   {
     // El sistema no necesita deltaTime para dibujar.
     (void)deltaTime;
 
-    registry
-      .GetView<PathComponent, DebugPathComponent>()
-      .Each(
-        [this](
-          EntityID entity,
-          PathComponent& path,
-          DebugPathComponent& debug)
+    // --------------------------------------------------
+    // Debug de paths
+    // --------------------------------------------------
+
+    registry.GetView<PathComponent, DebugPathComponent>().Each([this](EntityID entity,
+      PathComponent& path,
+      DebugPathComponent& debug)
+      {
+        (void)entity;
+
+        if (!debug.enabled)
         {
-          (void)entity;
+          return;
+        }
 
-          if (!debug.enabled)
-          {
-            return;
-          }
+        DrawPath(path, debug);
+      });
 
-          DrawPath(path, debug);
-        });
+    // --------------------------------------------------
+    // Debug de agentes con Steering
+    // --------------------------------------------------
+
+    registry.GetView<Transform, SteeringDebugComponent>().Each([this](EntityID entity,
+      Transform& transform,
+      SteeringDebugComponent& debug)
+      {
+        (void)entity;
+
+        if (!debug.enabled)
+        {
+          return;
+        }
+
+        DrawAgentDebug(transform, debug);
+      });
   }
 
-  void DebugRenderSystem::DrawPath(
-    const PathComponent& path,
-    const DebugPathComponent& debug)
+  void
+    DebugRenderSystem::DrawPath(const PathComponent& path, const DebugPathComponent& debug)
   {
     if (path.points.size() < 2)
     {
@@ -180,9 +198,8 @@ namespace ECS
     m_window.draw(rightLine);
   }
 
-  void DebugRenderSystem::DrawSamplePoints(
-    const PathComponent& path,
-    const DebugPathComponent& debug)
+  void
+    DebugRenderSystem::DrawSamplePoints(const PathComponent& path, const DebugPathComponent& debug)
   {
     if (path.points.empty())
     {
@@ -204,6 +221,126 @@ namespace ECS
     {
       marker.setPosition(path.points[i]);
       m_window.draw(marker);
+    }
+  }
+
+  void
+  DebugRenderSystem::DrawLine(const sf::Vector2f& start, const sf::Vector2f& end, const sf::Color& color) 
+  {
+    sf::VertexArray line(sf::PrimitiveType::Lines, 2);
+
+    line[0].position = start;
+    line[0].color = color;
+
+    line[1].position = end;
+    line[1].color = color;
+
+    m_window.draw(line);
+  }
+
+  void 
+  DebugRenderSystem::DrawPoint(const sf::Vector2f& position,float radius,const sf::Color& color)
+  {
+    if (radius <= 0.f) return;
+
+    sf::CircleShape marker(radius);
+
+    marker.setOrigin({radius, radius});
+
+    marker.setPosition(position);
+    marker.setFillColor(color);
+
+    m_window.draw(marker);
+  }
+
+  void 
+  DebugRenderSystem::DrawVector(const sf::Vector2f& origin, const sf::Vector2f& vector,
+                                float scale, const sf::Color& color)
+  {
+    if (scale <= 0.f) return;
+
+    if (Math::LengthSquared(vector) <= 0.00001f) return;
+
+    const sf::Vector2f end = origin + vector * scale;
+
+    DrawLine(origin, end, color);
+
+    // Pequeño marcador en la punta del vector.
+    DrawPoint(end, 2.5f, color);
+  }
+
+  void 
+  DebugRenderSystem::DrawAgentDebug(const Transform& transform, const SteeringDebugComponent& debug)
+  {
+    const sf::Vector2f& agentPosition = transform.position;
+
+      
+
+    // --------------------------------------------------
+    // Velocidad
+    // --------------------------------------------------
+
+    if (debug.drawVelocity) DrawVector(agentPosition, debug.velocity, debug.velocityScale, debug.velocityColor);
+
+    // --------------------------------------------------
+    // Posición futura predicha
+    // --------------------------------------------------
+
+    if (debug.drawPredictedPosition)
+    {
+      DrawLine(agentPosition, debug.predictedPosition, debug.predictedPositionColor);
+
+      DrawPoint(debug.predictedPosition, 4.f, debug.predictedPositionColor);
+    }
+
+    // --------------------------------------------------
+    // Punto más cercano sobre la línea central
+    // --------------------------------------------------
+
+    if (debug.drawNearestPathPoint)
+    {
+      DrawLine(debug.predictedPosition, debug.nearestPathPoint, debug.nearestPathPointColor);
+
+      DrawPoint(debug.nearestPathPoint, 4.f, debug.nearestPathPointColor);
+    }
+
+    // --------------------------------------------------
+    // Objetivo adelantado sobre el path
+    // --------------------------------------------------
+
+    if (debug.drawPathTargetPoint)
+    {
+      DrawLine(debug.nearestPathPoint, debug.pathTargetPoint, debug.pathTargetPointColor);
+
+      DrawPoint(debug.pathTargetPoint, 5.f, debug.pathTargetPointColor);
+    }
+
+    // --------------------------------------------------
+    // Fuerza exclusiva de Path Following
+    // --------------------------------------------------
+
+    if (debug.drawPathFollowingForce)
+    {
+      DrawVector(agentPosition, debug.pathFollowingForce, debug.forceScale, debug.pathFollowingForceColor);
+    }
+
+    // --------------------------------------------------
+    // Fuerza de Separation
+    // Por ahora será cero y no se dibujará.
+    // --------------------------------------------------
+
+    if (debug.drawSeparationForce)
+    {
+      DrawVector(agentPosition, debug.separationForce, debug.forceScale, debug.separationForceColor);
+    }
+
+    // --------------------------------------------------
+    // Fuerza final después de prioridades
+    // --------------------------------------------------
+
+    if (debug.drawFinalSteeringForce)
+    {
+      DrawVector( agentPosition, debug.finalSteeringForce, debug.forceScale, debug.finalSteeringForceColor);
     }
   }
 }

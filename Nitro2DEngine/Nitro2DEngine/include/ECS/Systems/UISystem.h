@@ -6,6 +6,7 @@
 #include "ECS/Components/Render.h"
 #include "ECS/Components/Camera.h"
 #include "ECS/Components/SteeringComponent.h"
+#include "ECS/Components/SteeringDebugComponent.h"
 #include "ECS/Components/Obstacle.h"
 #include "ECS/Editor/ComponentRegistry.h"
 #include "ECS/Components/Name.h"
@@ -235,6 +236,31 @@ namespace ECS {
         ImGui::End();
         return;
       }
+
+      auto EditSFMLColor = [](const char* label, sf::Color& color)
+      {
+        float values[4] = {
+            static_cast<float>(color.r) / 255.f,
+            static_cast<float>(color.g) / 255.f,
+            static_cast<float>(color.b) / 255.f,
+            static_cast<float>(color.a) / 255.f
+        };
+
+        if (ImGui::ColorEdit4(label, values))
+        {
+          color.r = static_cast<std::uint8_t>(
+            values[0] * 255.f);
+
+          color.g = static_cast<std::uint8_t>(
+            values[1] * 255.f);
+
+          color.b = static_cast<std::uint8_t>(
+            values[2] * 255.f);
+
+          color.a = static_cast<std::uint8_t>(
+            values[3] * 255.f);
+        }
+      };
 
       if (ImGui::Button("+ Add Component")) {
         ImGui::OpenPopup("AddComponentPopup");
@@ -507,6 +533,106 @@ namespace ECS {
             ImGui::DragFloat("Look Ahead", &steer.obstacleLookAhead, 1.f, 0.f, 1000.f);
             ImGui::DragFloat("Agent Radius", &steer.obstacleRadius, 0.5f, 0.f, 200.f);
           }
+        }
+      }
+
+      if (auto* debug =
+        registry.TryGetComponent<ECS::SteeringDebugComponent>(
+          selectedEntity))
+      {
+        ImGui::Separator();
+
+        if (ImGui::CollapsingHeader(
+          "Steering Debug",
+          ImGuiTreeNodeFlags_DefaultOpen))
+        {
+          ImGui::Checkbox(
+            "Debug Enabled##SteeringDebug",
+            &debug->enabled);
+
+          ImGui::BeginDisabled(!debug->enabled);
+
+          // ----------------------------------------------
+          // Escalas
+          // ----------------------------------------------
+
+          ImGui::DragFloat(
+            "Velocity Scale",
+            &debug->velocityScale,
+            0.01f,
+            0.01f,
+            5.f);
+
+          ImGui::DragFloat(
+            "Force Scale",
+            &debug->forceScale,
+            0.01f,
+            0.01f,
+            5.f);
+
+          ImGui::SeparatorText("Velocity");
+
+          ImGui::Checkbox(
+            "Draw Velocity",
+            &debug->drawVelocity);
+
+          EditSFMLColor(
+            "Velocity Color",
+            debug->velocityColor);
+
+          ImGui::SeparatorText("Path Geometry");
+
+          ImGui::Checkbox(
+            "Draw Predicted Position",
+            &debug->drawPredictedPosition);
+
+          EditSFMLColor(
+            "Predicted Position Color",
+            debug->predictedPositionColor);
+
+          ImGui::Checkbox(
+            "Draw Nearest Path Point",
+            &debug->drawNearestPathPoint);
+
+          EditSFMLColor(
+            "Nearest Path Point Color",
+            debug->nearestPathPointColor);
+
+          ImGui::Checkbox(
+            "Draw Path Target Point",
+            &debug->drawPathTargetPoint);
+
+          EditSFMLColor(
+            "Path Target Point Color",
+            debug->pathTargetPointColor);
+
+          ImGui::SeparatorText("Steering Forces");
+
+          ImGui::Checkbox(
+            "Draw Path Following Force",
+            &debug->drawPathFollowingForce);
+
+          EditSFMLColor(
+            "Path Following Force Color",
+            debug->pathFollowingForceColor);
+
+          ImGui::Checkbox(
+            "Draw Separation Force",
+            &debug->drawSeparationForce);
+
+          EditSFMLColor(
+            "Separation Force Color",
+            debug->separationForceColor);
+
+          ImGui::Checkbox(
+            "Draw Final Steering Force",
+            &debug->drawFinalSteeringForce);
+
+          EditSFMLColor(
+            "Final Steering Force Color",
+            debug->finalSteeringForceColor);
+
+          ImGui::EndDisabled();
         }
       }
 
