@@ -9,6 +9,8 @@
 #include "ECS/Components/Obstacle.h"
 #include "ECS/Editor/ComponentRegistry.h"
 #include "ECS/Components/Name.h"
+#include "ECS/Components/PathComponent.h"
+#include "ECS/Components/DebugPathComponent.h"
 
 namespace ECS {
 	class UISystem final : public System
@@ -361,6 +363,76 @@ namespace ECS {
           else
             ImGui::Text("Follow Target: %llu",
               static_cast<unsigned long long>(cam->followTarget));
+        }
+      }
+
+			// --- Path --------------------------------------------------
+      if (auto* path = registry.TryGetComponent<ECS::PathComponent>(selectedEntity))
+      {
+        ImGui::Separator();
+
+        if (ImGui::CollapsingHeader(
+          "Path",
+          ImGuiTreeNodeFlags_DefaultOpen))
+        {
+          ImGui::Text(
+            "Sampled Points: %llu",
+            static_cast<unsigned long long>(
+              path->points.size()));
+
+          ImGui::Checkbox(
+            "Closed Path",
+            &path->closed);
+
+          ImGui::DragFloat(
+            "Path Radius",
+            &path->radius,
+            1.f,
+            0.f,
+            1000.f);
+        }
+      }
+
+			// --- Debug Path --------------------------------------------------
+      if (auto* debug =
+        registry.TryGetComponent<ECS::DebugPathComponent>(
+          selectedEntity))
+      {
+        ImGui::Separator();
+
+        if (ImGui::CollapsingHeader(
+          "Path Debug",
+          ImGuiTreeNodeFlags_DefaultOpen))
+        {
+          ImGui::Checkbox(
+            "Debug Enabled",
+            &debug->enabled);
+
+          ImGui::BeginDisabled(!debug->enabled);
+
+          ImGui::Checkbox(
+            "Draw Center Line",
+            &debug->drawCenterLine);
+
+          ImGui::Checkbox(
+            "Draw Path Radius",
+            &debug->drawPathRadius);
+
+          ImGui::Checkbox(
+            "Draw Sample Points",
+            &debug->drawSamplePoints);
+
+          if (debug->drawSamplePoints)
+          {
+            ImGui::DragInt(
+              "Sample Point Step",
+              &debug->samplePointStep,
+              1.f,
+              1,
+              100);
+          }
+
+          ImGui::EndDisabled();
         }
       }
 
