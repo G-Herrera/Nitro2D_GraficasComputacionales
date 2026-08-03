@@ -22,6 +22,7 @@ namespace ECS {
 		std::shared_ptr<sf::Texture> texture;     // sprite opciona (nullptr sin sprite)
 		sf::Color fillColor{ sf::Color::White };  // color de relleno
 		bool visible{ true };											// permite ocultar si nquitar el componente
+		int zOrder{ 0 };													// orden de dibujo: menor = mas atras, mayor = mas al frente
 
 		Render() = default;
 

@@ -18,6 +18,7 @@
 #include <queue>
 #include <cmath>
 #include <random>
+#include <algorithm>
 
 //Third Parties
 #include <SFML/Graphics.hpp>
