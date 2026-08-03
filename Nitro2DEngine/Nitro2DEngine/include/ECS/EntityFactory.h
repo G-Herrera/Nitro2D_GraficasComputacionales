@@ -3,6 +3,8 @@
 #include "ECS/Components/Transform.h"
 #include "ECS/Components/Name.h"
 #include "ECS/Components/Render.h"
+#include "ECS/Components/PathComponent.h"
+#include "Modules/Math2D.h"
 // ======================================================
 // ECS :: EntityFactory.h
 //
@@ -78,6 +80,28 @@ namespace ECS {
 		render.zOrder = -1000; // Fondo: siempre detras de todo, sin importar el orden de creacion
 
 		registry.AddComponent<Render>(entity, std::move(render));
+		return entity;
+	}
+
+	// Crea la entidad "circuito" (path): a partir de pocos puntos de
+	// control, genera una polilinea cerrada y densa (Catmull-Rom) y la
+	// guarda en un PathComponent. No lleva Render por defecto: el path
+	// en si no se dibuja con el pipeline normal, se visualizara con el
+	// sistema de debug draw (Etapa 6).
+	inline EntityID
+		CreateRacingPath(Registry& registry,
+			const std::vector<sf::Vector2f>& controlPoints,
+			float pathRadius = 40.f,
+			int samplesPerSegment = 20,
+			const std::string& name = "RacingPath") {
+		EntityID entity = CreateEntity(registry, name, { 0.f, 0.f });
+
+		PathComponent path;
+		path.points = Math::BuildClosedCatmullRom(controlPoints, samplesPerSegment);
+		path.closed = true;
+		path.radius = pathRadius;
+
+		registry.AddComponent<PathComponent>(entity, std::move(path));
 		return entity;
 	}
 }

@@ -13,6 +13,8 @@
 #include "ECS/Components/Velocity.h"
 #include "ECS/Components/Acceleration.h"
 #include "ECS/Components/SteeringComponent.h"
+#include "ECS/Components/PathComponent.h"
+#include "Modules/Math2D.h"
 
 
 //Window* g_window = nullptr;
@@ -59,10 +61,56 @@ int main()
   sf::Clock deltaClock;
   bool showDemoWindow = true;
 
+	//Creación del track de fondo y el path de carrera
   ECS::EntityID track = ECS::CreateTrackBackground(registry, "Textures/Track.png");
 
-  ECS::EntityID circle = ECS::CreateEntity(registry, "Player", { 400.f, 300.f });
+  const std::vector<sf::Vector2f> raceLineControlPoints = {
+    { -210.0f, -240.0f },
+    { 210.0f, -240.0f },
+    { 379.7f, -169.7f },
+    { 450.0f, 0.0f },
+    { 379.7f, 169.7f },
+    { 210.0f, 240.0f },
+    { -210.0f, 240.0f },
+    { -379.7f, 169.7f },
+    { -450.0f, 0.0f },
+    { -379.7f, -169.7f },
+  };
+  ECS::EntityID racingPath = ECS::CreateRacingPath(registry, raceLineControlPoints, 90.f);
+
+  std::cout << "Path generado con " << registry.GetComponent<ECS::PathComponent>(racingPath).points.size() << " puntos\n";
+
+  auto& pathComponent = registry.GetComponent<ECS::PathComponent>(racingPath);
+
+  if (pathComponent.points.size() < 2)
+  {
+    std::cerr << "ERROR: El RacingPath necesita al menos 2 puntos.\n";
+    return -1;
+  }
+
+	//Creación del jugador en la posición inicial del path
+  const sf::Vector2f playerStartPosition = pathComponent.points.front();
+  const sf::Vector2f playerInitialDirection = Math::Normalize(pathComponent.points[1] -
+                                                              pathComponent.points[0]);
+
+  ECS::EntityID circle =ECS::CreateEntity(registry, "Player", playerStartPosition);
   registry.AddComponent<ECS::Render>(circle, ECS::Render::Make(CIRCLE, sf::Color(100, 250, 50), "Textures/wallpaper11.jpg"));
+
+	//Asignación de componentes de movimiento y steering al jugador
+  auto& playerVelocity = registry.AddComponent<ECS::Velocity>(circle);
+  registry.AddComponent<ECS::Acceleration>(circle);
+  auto& playerSteering = registry.AddComponent<ECS::SteeringComponent>(circle);
+
+	//Configuración inicial de la velocidad del jugador para que se mueva a lo largo del path
+  playerVelocity.velocity =playerInitialDirection * 80.f;
+
+  playerSteering.pathFollowingEnabled = true;
+  playerSteering.pathEntity = racingPath;
+  
+  playerSteering.maxSpeed = 110.f;
+  playerSteering.maxForce = 80.f;
+
+  playerSteering.pathAheadDistance = 80.f;
 
   ECS::EntityID tri = ECS::CreateEntity(registry, "Triangle", { 200.f, 200.f });
   registry.GetComponent<ECS::Transform>(tri).rotation = 45.f;
@@ -86,7 +134,7 @@ int main()
 
   // Testing steering behaviors
   triSteer.seekEnabled = false;
-  triSteer.wanderEnabled = true;
+  triSteer.wanderEnabled = false;
 
   //triSteer.target = circle;
   triSteer.maxSpeed = 100.f;
