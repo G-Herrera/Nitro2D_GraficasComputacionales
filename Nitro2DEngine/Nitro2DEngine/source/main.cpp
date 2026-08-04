@@ -13,6 +13,11 @@
 #include "ECS/Components/Velocity.h"
 #include "ECS/Components/Acceleration.h"
 #include "ECS/Components/SteeringComponent.h"
+#include "ECS/Components/PathComponent.h"
+#include "ECS/Components/DebugPathComponent.h"
+#include "ECS/Systems/DebugRenderSystem.h"
+#include "ECS/Components/SteeringDebugComponent.h"
+#include "Modules/Math2D.h"
 
 
 //Window* g_window = nullptr;
@@ -42,8 +47,9 @@ int main()
   //Registro de sistemas en el ECS
   registry.AddSystem<ECS::SteeringSystem>();
   registry.AddSystem<ECS::CameraSystem>(g_window);
-  registry.AddSystem<ECS::UISystem>();
   registry.AddSystem<ECS::RenderSystem>(g_window);
+  registry.AddSystem<ECS::DebugRenderSystem>(g_window);
+  registry.AddSystem<ECS::UISystem>();
   
 
   //m_window es un puntero a sf::RenderWindow.
@@ -59,8 +65,126 @@ int main()
   sf::Clock deltaClock;
   bool showDemoWindow = true;
 
-  ECS::EntityID circle = ECS::CreateEntity(registry, "Player", { 400.f, 300.f });
+	//Creación del track de fondo y el path de carrera
+  ECS::EntityID track = ECS::CreateTrackBackground(registry, "Textures/Track.png");
+
+  const std::vector<sf::Vector2f> raceLineControlPoints = {
+    { -210.0f, -240.0f },
+    { 210.0f, -240.0f },
+    { 379.7f, -169.7f },
+    { 450.0f, 0.0f },
+    { 379.7f, 169.7f },
+    { 210.0f, 240.0f },
+    { -210.0f, 240.0f },
+    { -379.7f, 169.7f },
+    { -450.0f, 0.0f },
+    { -379.7f, -169.7f },
+  };
+  ECS::EntityID racingPath = ECS::CreateRacingPath(registry, raceLineControlPoints, 90.f);
+
+  auto& pathDebug = registry.AddComponent<ECS::DebugPathComponent>(racingPath);
+  pathDebug.enabled = true;
+  pathDebug.drawCenterLine = true;
+  pathDebug.drawPathRadius = true;
+  pathDebug.drawSamplePoints = false;
+
+  std::cout << "Path generado con " << registry.GetComponent<ECS::PathComponent>(racingPath).points.size() << " puntos\n";
+
+  auto& pathComponent = registry.GetComponent<ECS::PathComponent>(racingPath);
+
+  if (pathComponent.points.size() < 2)
+  {
+    std::cerr << "ERROR: El RacingPath necesita al menos 2 puntos.\n";
+    return -1;
+  }
+
+  // ======================================================
+  // Primer kart autonomo (player)
+  // ======================================================
+
+	//Creación del jugador en la posición inicial del path
+  const sf::Vector2f playerStartPosition = pathComponent.points.front();
+  const sf::Vector2f playerInitialDirection = Math::Normalize(pathComponent.points[1] -
+                                                              pathComponent.points[0]);
+
+  ECS::EntityID circle =ECS::CreateEntity(registry, "Player", playerStartPosition);
   registry.AddComponent<ECS::Render>(circle, ECS::Render::Make(CIRCLE, sf::Color(100, 250, 50), "Textures/wallpaper11.jpg"));
+
+	//Asignación de componentes de movimiento y steering al jugador
+  auto& playerVelocity = registry.AddComponent<ECS::Velocity>(circle);
+  registry.AddComponent<ECS::Acceleration>(circle);
+  auto& playerSteering = registry.AddComponent<ECS::SteeringComponent>(circle);
+
+	//Habilitar el debug de steering para el jugador
+  auto& playerDebug = registry.AddComponent<ECS::SteeringDebugComponent>(circle);
+  playerDebug.enabled = true;
+
+	//Configuración inicial de la velocidad del jugador para que se mueva a lo largo del path
+  playerVelocity.velocity =playerInitialDirection * 80.f;
+
+  playerSteering.pathFollowingEnabled = true;
+  playerSteering.pathEntity = racingPath;
+
+	// Configuración de separation para el jugador, para evitar colisiones con otros karts
+  playerSteering.separationEnabled = true;
+  playerSteering.separationRadius = 70.f;
+  playerSteering.separationStrength = 1.f;
+  
+  playerSteering.maxSpeed = 110.f;
+  playerSteering.maxForce = 80.f;
+
+  playerSteering.pathAheadDistance = 80.f;
+
+  // ======================================================
+  // Segundo kart autonomo
+  // ======================================================
+
+	//Creación de un segundo kart en la mitad del path
+  const std::size_t kart2StartIndex = pathComponent.points.size() / 2;
+  const std::size_t kart2NextIndex =(kart2StartIndex + 1) % pathComponent.points.size();
+
+	//Calcular la posición inicial y la dirección del segundo kart
+  const sf::Vector2f kart2StartPosition = pathComponent.points[kart2StartIndex];
+  const sf::Vector2f kart2InitialDirection = Math::Normalize(pathComponent.points[kart2NextIndex] -
+                                                             pathComponent.points[kart2StartIndex]);
+
+	//Creación del segundo kart y asignación de componente de render
+  ECS::EntityID kart2 = ECS::CreateEntity(registry, "Kart 2",kart2StartPosition);
+	registry.AddComponent<ECS::Render>(kart2, ECS::Render::Make(CIRCLE, sf::Color(250, 100, 50), ""));
+	
+  //Asignación de componentes de movimiento y steering al segundo kart
+  auto& kart2Velocity = registry.AddComponent<ECS::Velocity>(kart2);
+  registry.AddComponent<ECS::Acceleration>(kart2);
+  auto& kart2Steering = registry.AddComponent<ECS::SteeringComponent>(kart2);
+  auto& kart2Debug = registry.AddComponent<ECS::SteeringDebugComponent>(kart2);
+  kart2Velocity.velocity = kart2InitialDirection * 75.f;
+
+	//Habilitar el debug de steering para el segundo kart
+  kart2Steering.pathFollowingEnabled = true;
+  kart2Steering.pathEntity = racingPath;
+
+  // Configuración de separation para el segundo kart, para evitar colisiones con otros karts
+  kart2Steering.separationEnabled = true;
+  kart2Steering.separationRadius = 70.f;
+  kart2Steering.separationStrength = 1.f;
+
+  kart2Steering.maxSpeed = 105.f;
+  kart2Steering.maxForce = 75.f;
+  kart2Steering.pathAheadDistance = 75.f;
+
+	// Configuración del debug de steering para el segundo kart
+  kart2Debug.enabled = true;
+  kart2Debug.velocityScale = 0.5f;
+  kart2Debug.forceScale = 1.f;
+
+  // Colores
+  kart2Debug.velocityColor = sf::Color(0, 180, 255, 230);
+  kart2Debug.predictedPositionColor = sf::Color(200, 255, 255, 230);
+  kart2Debug.nearestPathPointColor = sf::Color(100, 180, 255, 230);
+  kart2Debug.pathTargetPointColor = sf::Color(255, 220, 0, 230);
+  kart2Debug.pathFollowingForceColor = sf::Color(0, 100, 255, 230);
+  kart2Debug.separationForceColor = sf::Color(220, 80, 255, 230);
+  kart2Debug.finalSteeringForceColor = sf::Color(255, 220, 80, 230);
 
   ECS::EntityID tri = ECS::CreateEntity(registry, "Triangle", { 200.f, 200.f });
   registry.GetComponent<ECS::Transform>(tri).rotation = 45.f;
@@ -84,7 +208,7 @@ int main()
 
   // Testing steering behaviors
   triSteer.seekEnabled = false;
-  triSteer.wanderEnabled = true;
+  triSteer.wanderEnabled = false;
 
   //triSteer.target = circle;
   triSteer.maxSpeed = 100.f;

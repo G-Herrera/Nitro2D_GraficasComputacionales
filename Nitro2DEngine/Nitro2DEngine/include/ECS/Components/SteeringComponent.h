@@ -27,6 +27,7 @@ namespace ECS {
 		bool wanderEnabled{ false };
 		bool obstacleAvoidanceEnabled{ false };
 		bool pursuitEnabled{ false };
+		bool separationEnabled{ false };
 
 		//Entidad objetivo (debe tener Transform). NULL_ENTITY = sin objetivo.
 		EntityID target{ NULL_ENTITY };
@@ -53,7 +54,15 @@ namespace ECS {
 		float obstacleLookAhead{ 100.f }; // distancia de "mirada" hacia adelante para detectar obstáculos
 		float obstacleRadius{ 20.f }; // radio de detección de obstáculos
 
-			
+		//Path Following
+		bool pathFollowingEnabled{ false };
+		EntityID pathEntity{ NULL_ENTITY };  // entidad con PathComponent a seguir
+		float pathAheadDistance{ 80.f };     // distancia hacia adelante en el path para elegir el punto objetivo
+		
+		// Separation
+		float separationRadius{ 60.f };
+		float separationStrength{ 1.f };
+
 		SteeringComponent() = default;
 	};
 }

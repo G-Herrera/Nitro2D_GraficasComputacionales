@@ -89,4 +89,44 @@ namespace Math
     */
   [[nodiscard]] float 
   DistanceSquared(const sf::Vector2f& a, const sf::Vector2f& b) noexcept;
+
+  // ================= Geometria de Path =================
+
+  // Proyecta el punto p sobre el segmento [a,b]; devuelve el punto
+  // mas cercano DENTRO del segmento (clamp del parametro t en [0,1]).
+  [[nodiscard]]
+  sf::Vector2f ProjectPointOnSegment(const sf::Vector2f& p, const sf::Vector2f& a, 
+                                     const sf::Vector2f& b) noexcept;
+
+  // Resultado de buscar el punto mas cercano sobre una polilinea completa.
+  struct NearestPathResult {
+    sf::Vector2f point;              // punto mas cercano sobre el path
+    std::size_t segmentIndex{ 0 };   // indice del segmento [i, i+1] donde cae
+    float distance{ 0.f };           // distancia de p a ese punto
+  };
+
+  // Recorre todos los segmentos de la polilinea (points) y devuelve el
+  // punto mas cercano a p. Si closed=true, incluye el segmento que
+  // conecta el ultimo punto con el primero.
+  [[nodiscard]]
+  NearestPathResult NearestPointOnPath(const std::vector<sf::Vector2f>& points, bool closed, 
+                                       const sf::Vector2f& p) noexcept;
+
+  // Partiendo de un punto ya ubicado sobre el path (fromSegmentIndex,
+  // fromPoint), avanza `distanceAhead` unidades SIGUIENDO los segmentos
+  // de la polilinea y devuelve el punto resultante. Si closed=true, al
+  // llegar al final vuelve a empezar por el principio (vuelta cerrada).
+  [[nodiscard]]
+  sf::Vector2f PointAheadOnPath(const std::vector<sf::Vector2f>& points, bool closed,
+                                std::size_t fromSegmentIndex, const sf::Vector2f& fromPoint,
+                                float distanceAhead) noexcept;
+
+  // Genera una polilinea DENSA y cerrada interpolando pocos puntos de
+  // control con Catmull-Rom uniforme. Uso previsto: construir el path
+  // del circuito UNA sola vez al crear la escena, muestreando varios
+  // puntos por segmento para que se vea suave en runtime sin tener que
+  // evaluar la curva cada frame.
+  [[nodiscard]]
+  std::vector<sf::Vector2f> BuildClosedCatmullRom(const std::vector<sf::Vector2f>& controlPoints,
+                                                  int samplesPerSegment) noexcept;
 };

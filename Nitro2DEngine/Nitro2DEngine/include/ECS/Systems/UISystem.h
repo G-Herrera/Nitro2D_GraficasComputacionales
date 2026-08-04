@@ -6,9 +6,12 @@
 #include "ECS/Components/Render.h"
 #include "ECS/Components/Camera.h"
 #include "ECS/Components/SteeringComponent.h"
+#include "ECS/Components/SteeringDebugComponent.h"
 #include "ECS/Components/Obstacle.h"
 #include "ECS/Editor/ComponentRegistry.h"
 #include "ECS/Components/Name.h"
+#include "ECS/Components/PathComponent.h"
+#include "ECS/Components/DebugPathComponent.h"
 
 namespace ECS {
 	class UISystem final : public System
@@ -234,6 +237,31 @@ namespace ECS {
         return;
       }
 
+      auto EditSFMLColor = [](const char* label, sf::Color& color)
+      {
+        float values[4] = {
+            static_cast<float>(color.r) / 255.f,
+            static_cast<float>(color.g) / 255.f,
+            static_cast<float>(color.b) / 255.f,
+            static_cast<float>(color.a) / 255.f
+        };
+
+        if (ImGui::ColorEdit4(label, values))
+        {
+          color.r = static_cast<std::uint8_t>(
+            values[0] * 255.f);
+
+          color.g = static_cast<std::uint8_t>(
+            values[1] * 255.f);
+
+          color.b = static_cast<std::uint8_t>(
+            values[2] * 255.f);
+
+          color.a = static_cast<std::uint8_t>(
+            values[3] * 255.f);
+        }
+      };
+
       if (ImGui::Button("+ Add Component")) {
         ImGui::OpenPopup("AddComponentPopup");
       }
@@ -364,6 +392,76 @@ namespace ECS {
         }
       }
 
+			// --- Path --------------------------------------------------
+      if (auto* path = registry.TryGetComponent<ECS::PathComponent>(selectedEntity))
+      {
+        ImGui::Separator();
+
+        if (ImGui::CollapsingHeader(
+          "Path",
+          ImGuiTreeNodeFlags_DefaultOpen))
+        {
+          ImGui::Text(
+            "Sampled Points: %llu",
+            static_cast<unsigned long long>(
+              path->points.size()));
+
+          ImGui::Checkbox(
+            "Closed Path",
+            &path->closed);
+
+          ImGui::DragFloat(
+            "Path Radius",
+            &path->radius,
+            1.f,
+            0.f,
+            1000.f);
+        }
+      }
+
+			// --- Debug Path --------------------------------------------------
+      if (auto* debug =
+        registry.TryGetComponent<ECS::DebugPathComponent>(
+          selectedEntity))
+      {
+        ImGui::Separator();
+
+        if (ImGui::CollapsingHeader(
+          "Path Debug",
+          ImGuiTreeNodeFlags_DefaultOpen))
+        {
+          ImGui::Checkbox(
+            "Debug Enabled",
+            &debug->enabled);
+
+          ImGui::BeginDisabled(!debug->enabled);
+
+          ImGui::Checkbox(
+            "Draw Center Line",
+            &debug->drawCenterLine);
+
+          ImGui::Checkbox(
+            "Draw Path Radius",
+            &debug->drawPathRadius);
+
+          ImGui::Checkbox(
+            "Draw Sample Points",
+            &debug->drawSamplePoints);
+
+          if (debug->drawSamplePoints)
+          {
+            ImGui::DragInt(
+              "Sample Point Step",
+              &debug->samplePointStep,
+              1.f,
+              1,
+              100);
+          }
+
+          ImGui::EndDisabled();
+        }
+      }
+
       // --- Steering --------------------------------------------------
       if (registry.HasComponent<ECS::SteeringComponent>(selectedEntity))
       {
@@ -391,9 +489,76 @@ namespace ECS {
           ImGui::SameLine();
           ImGui::Checkbox("Avoid Obstacles", &steer.obstacleAvoidanceEnabled);
 
+          ImGui::Checkbox("Path Following", &steer.pathFollowingEnabled);
+          ImGui::SameLine();         
+          ImGui::Checkbox("Separation", &steer.separationEnabled);
+
           ImGui::DragFloat("Max Speed", &steer.maxSpeed, 1.f, 0.f, 2000.f);
           ImGui::DragFloat("Max Force", &steer.maxForce, 1.f, 0.f, 2000.f);
           ImGui::DragFloat("Slowing Radius", &steer.slowingRadius, 1.f, 0.f, 2000.f);
+
+          // --------------------------------------------------
+          // Path Following
+          // --------------------------------------------------
+
+          if (steer.pathFollowingEnabled)
+          {
+            ImGui::Separator();
+            ImGui::TextUnformatted("Path Following");
+
+            std::string pathPreview =
+              steer.pathEntity == ECS::NULL_ENTITY
+              ? "(ninguno)"
+              : EntityLabel(
+                registry,
+                steer.pathEntity);
+
+            if (ImGui::BeginCombo("Path Entity", pathPreview.c_str()))
+            {
+              const bool noneSelected =steer.pathEntity == ECS::NULL_ENTITY;
+
+              if (ImGui::Selectable("(ninguno)", noneSelected))
+              {
+                steer.pathEntity = ECS::NULL_ENTITY;
+              }
+
+              for (auto candidate : registry.GetAllEntities())
+              {
+                if (!registry.IsAlive(candidate))continue;
+
+                // Solo mostrar entidades que realmente
+                // tengan un PathComponent.
+                if (!registry.HasComponent<ECS::PathComponent>(candidate)) continue;
+
+                const std::string label = EntityLabel(registry, candidate);
+
+                const bool isSelected = steer.pathEntity == candidate;
+
+                if (ImGui::Selectable(label.c_str(), isSelected))
+                {
+                  steer.pathEntity = candidate;
+                }
+              }
+
+              ImGui::EndCombo();
+            }
+
+            ImGui::DragFloat("Path Ahead Distance", &steer.pathAheadDistance, 1.f, 0.f, 1000.f);
+          }
+
+          // --------------------------------------------------
+          // Separation
+          // --------------------------------------------------
+
+          if (steer.separationEnabled)
+          {
+            ImGui::Separator();
+            ImGui::TextUnformatted("Separation");
+
+            ImGui::DragFloat("Separation Radius", &steer.separationRadius, 1.f, 0.f, 500.f);
+
+            ImGui::DragFloat("Separation Strength", &steer.separationStrength, 0.05f, 0.f, 10.f);
+          }
 
           {
             std::string previewLabel = (steer.target == ECS::NULL_ENTITY)
@@ -435,6 +600,64 @@ namespace ECS {
             ImGui::DragFloat("Look Ahead", &steer.obstacleLookAhead, 1.f, 0.f, 1000.f);
             ImGui::DragFloat("Agent Radius", &steer.obstacleRadius, 0.5f, 0.f, 200.f);
           }
+        }
+      }
+
+      if (auto* debug =
+        registry.TryGetComponent<ECS::SteeringDebugComponent>(
+          selectedEntity))
+      {
+        ImGui::Separator();
+
+        if (ImGui::CollapsingHeader("Steering Debug", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+          ImGui::Checkbox("Debug Enabled##SteeringDebug", &debug->enabled);
+
+          ImGui::BeginDisabled(!debug->enabled);
+
+          // ----------------------------------------------
+          // Escalas
+          // ----------------------------------------------
+
+          ImGui::DragFloat("Velocity Scale", &debug->velocityScale, 0.01f, 0.01f, 5.f);
+
+          ImGui::DragFloat("Force Scale", &debug->forceScale, 0.01f, 0.01f, 5.f);
+
+          ImGui::SeparatorText("Velocity");
+
+          ImGui::Checkbox("Draw Velocity", &debug->drawVelocity);
+
+          EditSFMLColor("Velocity Color", debug->velocityColor);
+
+          ImGui::SeparatorText("Path Geometry");
+
+          ImGui::Checkbox("Draw Predicted Position", &debug->drawPredictedPosition);
+
+          EditSFMLColor("Predicted Position Color", debug->predictedPositionColor);
+
+          ImGui::Checkbox("Draw Nearest Path Point", &debug->drawNearestPathPoint);
+
+          EditSFMLColor("Nearest Path Point Color", debug->nearestPathPointColor);
+
+          ImGui::Checkbox("Draw Path Target Point", &debug->drawPathTargetPoint);
+
+          EditSFMLColor("Path Target Point Color", debug->pathTargetPointColor);
+
+          ImGui::SeparatorText("Steering Forces");
+
+          ImGui::Checkbox("Draw Path Following Force", &debug->drawPathFollowingForce);
+
+          EditSFMLColor("Path Following Force Color", debug->pathFollowingForceColor);
+
+          ImGui::Checkbox("Draw Separation Force", &debug->drawSeparationForce);
+
+          EditSFMLColor("Separation Force Color", debug->separationForceColor);
+
+          ImGui::Checkbox("Draw Final Steering Force", &debug->drawFinalSteeringForce);
+
+          EditSFMLColor("Final Steering Force Color", debug->finalSteeringForceColor);
+
+          ImGui::EndDisabled();
         }
       }
 

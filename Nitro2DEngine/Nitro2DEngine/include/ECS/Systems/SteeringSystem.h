@@ -2,7 +2,10 @@
 #include "Prerequisites.h"
 #include "ECS/System.h"
 #include "ECS/Components/SteeringComponent.h"
+#include "ECS/Components/SteeringDebugComponent.h"
 #include "ECS/Components/Obstacle.h"
+#include "ECS/Components/PathComponent.h"
+
 //=========================================================
 // ECS::Systems/SteeringSystem.h
 //
@@ -34,6 +37,34 @@ namespace ECS {
 		EntityID id;
 		sf::Vector2f position;
 		float radius;
+	};
+
+	/**
+		* @brief Snapshot mínimo de un agente móvil para Separation.
+		*
+		* Se construye una sola vez por frame para evitar consultar
+		* repetidamente el Registry desde cada entidad.
+		*/
+	struct 
+	AgentData {
+		EntityID id{ NULL_ENTITY };
+		sf::Vector2f position{ 0.f, 0.f };
+	};
+
+	/**
+		* @brief Resultado completo del comportamiento Path Following.
+		*
+		* Contiene la fuerza de steering y los datos geométricos
+		* intermedios utilizados para calcularla. Estos datos pueden
+		* almacenarse en SteeringDebugComponent sin repetir cálculos.
+		*/
+	struct 
+	PathFollowingResult {
+		sf::Vector2f force{ 0.f, 0.f };
+
+		sf::Vector2f predictedPosition{ 0.f, 0.f };
+		sf::Vector2f nearestPoint{ 0.f, 0.f };
+		sf::Vector2f targetPoint{ 0.f, 0.f };
 	};
 
 	class 
@@ -161,6 +192,29 @@ namespace ECS {
 				float maxSpeed,
 				float predictionTime) const noexcept;
 
+	/**
+		* @brief Calcula una fuerza para mantener al agente siguiendo una polilinea.
+		*
+		* @param position Posicion actual del agente.
+		* @param velocity Velocidad actual del agente.
+		* @param path Camino que debe seguir.
+		* @param maxSpeed Velocidad maxima del agente.
+		* @param aheadDistance Distancia que se avanza sobre el path para elegir el objetivo.
+		*
+		* @return Fuerza de steering hacia un punto adelantado del path.
+		*
+		* @note Primero predice la posicion futura del agente. Si esa prediccion
+		* queda fuera del radio permitido del camino, busca un punto mas adelante
+		* sobre la polilinea y aplica Seek hacia el.
+		*/
+		[[nodiscard]] PathFollowingResult
+			ComputePathFollowing(
+				const sf::Vector2f& position,
+				const sf::Vector2f& velocity,
+				const PathComponent& path,
+				float maxSpeed,
+				float aheadDistance) const noexcept;
+
 		/**
 			* @brief Calcula el vector de steering para evitar obstáculos.
 			*
@@ -184,6 +238,29 @@ namespace ECS {
 				const std::vector<ObstacleData>& obstacles,
 				float lookAhead,
 				float agentRadius,
+				float maxSpeed) const noexcept;
+
+		/**
+			* @brief Calcula una fuerza que aleja al agente de otros agentes cercanos.
+			*
+			* @param selfId Entidad que está calculando la fuerza.
+			* @param position Posición actual del agente.
+			* @param velocity Velocidad actual del agente.
+			* @param agents Snapshot de los agentes disponibles en el frame.
+			* @param separationRadius Radio dentro del cual se aplica Separation.
+			* @param separationStrength Multiplicador de intensidad.
+			* @param maxSpeed Velocidad máxima del agente.
+			*
+			* @return Fuerza de steering que aleja al agente de sus vecinos.
+			*/
+		[[nodiscard]] sf::Vector2f
+		ComputeSeparation(
+				EntityID selfId,
+				const sf::Vector2f& position,
+				const sf::Vector2f& velocity,
+				const std::vector<AgentData>& agents,
+				float separationRadius,
+				float separationStrength,
 				float maxSpeed) const noexcept;
 	};
 }
