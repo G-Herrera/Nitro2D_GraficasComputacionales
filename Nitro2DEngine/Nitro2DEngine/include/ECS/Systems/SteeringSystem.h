@@ -40,12 +40,24 @@ namespace ECS {
 	};
 
 	/**
- * @brief Resultado completo del comportamiento Path Following.
- *
- * Contiene la fuerza de steering y los datos geométricos
- * intermedios utilizados para calcularla. Estos datos pueden
- * almacenarse en SteeringDebugComponent sin repetir cálculos.
- */
+		* @brief Snapshot mínimo de un agente móvil para Separation.
+		*
+		* Se construye una sola vez por frame para evitar consultar
+		* repetidamente el Registry desde cada entidad.
+		*/
+	struct 
+	AgentData {
+		EntityID id{ NULL_ENTITY };
+		sf::Vector2f position{ 0.f, 0.f };
+	};
+
+	/**
+		* @brief Resultado completo del comportamiento Path Following.
+		*
+		* Contiene la fuerza de steering y los datos geométricos
+		* intermedios utilizados para calcularla. Estos datos pueden
+		* almacenarse en SteeringDebugComponent sin repetir cálculos.
+		*/
 	struct 
 	PathFollowingResult {
 		sf::Vector2f force{ 0.f, 0.f };
@@ -226,6 +238,29 @@ namespace ECS {
 				const std::vector<ObstacleData>& obstacles,
 				float lookAhead,
 				float agentRadius,
+				float maxSpeed) const noexcept;
+
+		/**
+			* @brief Calcula una fuerza que aleja al agente de otros agentes cercanos.
+			*
+			* @param selfId Entidad que está calculando la fuerza.
+			* @param position Posición actual del agente.
+			* @param velocity Velocidad actual del agente.
+			* @param agents Snapshot de los agentes disponibles en el frame.
+			* @param separationRadius Radio dentro del cual se aplica Separation.
+			* @param separationStrength Multiplicador de intensidad.
+			* @param maxSpeed Velocidad máxima del agente.
+			*
+			* @return Fuerza de steering que aleja al agente de sus vecinos.
+			*/
+		[[nodiscard]] sf::Vector2f
+		ComputeSeparation(
+				EntityID selfId,
+				const sf::Vector2f& position,
+				const sf::Vector2f& velocity,
+				const std::vector<AgentData>& agents,
+				float separationRadius,
+				float separationStrength,
 				float maxSpeed) const noexcept;
 	};
 }

@@ -210,6 +210,100 @@ namespace ECS {
 		return Math::Normalize(avoidance) * maxSpeed;
 	}
 
+	sf::Vector2f
+	SteeringSystem::ComputeSeparation(
+			EntityID selfId,
+			const sf::Vector2f& position,
+			const sf::Vector2f& velocity,
+			const std::vector<AgentData>& agents,
+			float separationRadius,
+			float separationStrength,
+			float maxSpeed) const noexcept
+	{
+		if (separationRadius <= 0.f ||
+			separationStrength <= 0.f ||
+			maxSpeed <= 0.f)
+		{
+			return {};
+		}
+
+		sf::Vector2f separationDirection{
+				0.f,
+				0.f
+		};
+
+		int neighborCount = 0;
+
+		for (const AgentData& other : agents)
+		{
+			// El agente no debe separarse de sí mismo.
+			if (other.id == selfId)
+			{
+				continue;
+			}
+
+			const sf::Vector2f away =
+				position - other.position;
+
+			const float distance =
+				Math::Length(away);
+
+			// El otro agente está fuera del radio.
+			if (distance >= separationRadius)
+			{
+				continue;
+			}
+
+			sf::Vector2f direction;
+
+			// Caso especial: agentes exactamente superpuestos.
+			if (distance <= 0.00001f)
+			{
+				// Dirección determinista para que no elijan ambos
+				// exactamente el mismo lado.
+				direction =
+					selfId < other.id
+					? sf::Vector2f{ -1.f, 0.f }
+				: sf::Vector2f{ 1.f, 0.f };
+			}
+			else
+			{
+				direction =
+					away / distance;
+			}
+
+			// Peso por proximidad:
+			// distancia 0       -> peso aproximado 1
+			// distancia radio   -> peso 0
+			const float proximityWeight =
+				1.f - (distance / separationRadius);
+
+			separationDirection +=
+				direction * proximityWeight;
+
+			++neighborCount;
+		}
+
+		if (neighborCount == 0 ||
+			Math::LengthSquared(separationDirection) <= 0.00001f)
+		{
+			return {};
+		}
+
+		// Convertir la dirección acumulada en una velocidad deseada.
+		const sf::Vector2f desiredVelocity =
+			Math::Normalize(separationDirection) *
+			maxSpeed;
+
+		// Mismo principio de Seek:
+		// steering = velocidad deseada - velocidad actual.
+		const sf::Vector2f steeringForce =
+			desiredVelocity - velocity;
+
+		return steeringForce *
+			separationStrength;
+	}
+
 	void
 	SteeringSystem::OnUpdate(Registry& registry, float deltaTime) {
 
@@ -221,16 +315,46 @@ namespace ECS {
 				obstacles.push_back({ id, t.position, o.radius });
 			});
 
+		// Agentes del frame para Separation.
+// Toda entidad con Transform + SteeringComponent puede actuar
+// como vecino, aunque ella misma no tenga Separation activo.
+		std::vector<AgentData> agents;
+
+		registry.GetView<Transform, SteeringComponent>().Each(
+				[&agents](
+					EntityID id,
+					Transform& transform,
+					SteeringComponent& steering)
+				{
+					(void)steering;
+
+					agents.push_back({
+							id,
+							transform.position
+						});
+				});
+
 		registry.GetView<Transform, Velocity, Acceleration, SteeringComponent>().Each(
-			[this, &registry, deltaTime, &obstacles](EntityID entity, Transform& transform, Velocity& vel,
-				Acceleration& accel, SteeringComponent& steer) {
+			[this, &registry, deltaTime, &obstacles, &agents](
+				EntityID entity,
+				Transform& transform,
+				Velocity& vel,
+				Acceleration& accel,
+				SteeringComponent& steer) {
 
 					SteeringDebugComponent* debug = registry.TryGetComponent<SteeringDebugComponent>(entity);
+
+					if (debug)
+					{
+						// Evitar que permanezca una fuerza del frame anterior
+						// cuando ya no existen vecinos cercanos.
+						debug->separationForce = { 0.f, 0.f };
+					}
 
 					const bool anyBehaviorEnabled =
 						steer.seekEnabled || steer.fleeEnabled || steer.arriveEnabled ||
 						steer.pursuitEnabled || steer.wanderEnabled || steer.obstacleAvoidanceEnabled || 
-						steer.pathFollowingEnabled;
+						steer.pathFollowingEnabled || steer.separationEnabled;
 
 					if (!anyBehaviorEnabled)
 					{
@@ -274,7 +398,29 @@ namespace ECS {
 							obstacles, steer.obstacleLookAhead, steer.obstacleRadius, steer.maxSpeed));
 					}
 
-					// Prioridad 2: seguir o recuperar el camino.
+					// Prioridad 2: mantener distancia respecto a otros agentes.
+					if (steer.separationEnabled)
+					{
+						const sf::Vector2f separationForce =
+							ComputeSeparation(
+								entity,
+								transform.position,
+								vel.velocity,
+								agents,
+								steer.separationRadius,
+								steer.separationStrength,
+								steer.maxSpeed);
+
+						if (debug)
+						{
+							debug->separationForce =
+								separationForce;
+						}
+
+						accumulate(separationForce);
+					}
+
+					// Prioridad 3: seguir o recuperar el camino.
 					// No utiliza SteeringComponent::target; utiliza pathEntity.
 					if (steer.pathFollowingEnabled &&
 						steer.pathEntity != NULL_ENTITY &&
@@ -315,7 +461,7 @@ namespace ECS {
 						}
 					}
 
-					// Prioridad 3: comportamientos que dependen de target
+					// Prioridad 4: comportamientos que dependen de target
 					if (steer.target != NULL_ENTITY && registry.IsAlive(steer.target)) {
 						if (auto* targetTransform = registry.TryGetComponent<Transform>(steer.target)) {
 
@@ -343,7 +489,7 @@ namespace ECS {
 						}
 					}
 
-					// Prioridad 4 (más baja): Wander, es solo relleno cosmético
+					// Prioridad 5 (más baja): Wander, es solo relleno cosmético
 					if (steer.wanderEnabled) {
 						accumulate(ComputeWander(transform.position, vel.velocity, steer, deltaTime));
 					}

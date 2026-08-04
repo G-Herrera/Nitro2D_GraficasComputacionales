@@ -98,6 +98,10 @@ int main()
     return -1;
   }
 
+  // ======================================================
+  // Primer kart autonomo (player)
+  // ======================================================
+
 	//Creación del jugador en la posición inicial del path
   const sf::Vector2f playerStartPosition = pathComponent.points.front();
   const sf::Vector2f playerInitialDirection = Math::Normalize(pathComponent.points[1] -
@@ -120,6 +124,11 @@ int main()
 
   playerSteering.pathFollowingEnabled = true;
   playerSteering.pathEntity = racingPath;
+
+	// Configuración de separation para el jugador, para evitar colisiones con otros karts
+  playerSteering.separationEnabled = true;
+  playerSteering.separationRadius = 70.f;
+  playerSteering.separationStrength = 1.f;
   
   playerSteering.maxSpeed = 110.f;
   playerSteering.maxForce = 80.f;
@@ -153,6 +162,12 @@ int main()
 	//Habilitar el debug de steering para el segundo kart
   kart2Steering.pathFollowingEnabled = true;
   kart2Steering.pathEntity = racingPath;
+
+  // Configuración de separation para el segundo kart, para evitar colisiones con otros karts
+  kart2Steering.separationEnabled = true;
+  kart2Steering.separationRadius = 70.f;
+  kart2Steering.separationStrength = 1.f;
+
   kart2Steering.maxSpeed = 105.f;
   kart2Steering.maxForce = 75.f;
   kart2Steering.pathAheadDistance = 75.f;
