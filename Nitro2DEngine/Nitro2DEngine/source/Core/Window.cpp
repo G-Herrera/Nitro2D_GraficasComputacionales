@@ -198,6 +198,14 @@ Window::pollEvent()
 	return std::nullopt;
 }
 
+sf::Vector2f
+Window::ScreenToWorld(const sf::Vector2i& pixelPosition) const
+{
+	if (!m_window) return {};
+
+	return m_window->mapPixelToCoords(pixelPosition,m_window->getView());
+}
+
 /**
  * @brief Destruye explícitamente la ventana.
  *

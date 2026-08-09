@@ -10,6 +10,9 @@
 #include "ECS/Components/Camera.h"
 #include "ECS/Components/Name.h"
 #include "ECS/Components/Render.h"
+#include "ECS/Components/PathComponent.h"
+#include "ECS/Components/PathEditorComponent.h"
+#include "ECS/Components/DebugPathComponent.h"
 
 //=========================================================
 // ECS::Editor::ComponentRegistry
@@ -83,6 +86,9 @@ namespace ECS::Editor {
 			Register<Camera>("Camera");
 			Register<SteeringComponent>("Steering Component", { "Velocity", "Acceleration" });
 			Register<Name>("Name");
+			Register<PathComponent>("Path");
+			Register<DebugPathComponent>("Path Debug");
+			Register<PathEditorComponent>("Path Editor",{ "Path", "Path Debug"});
 			
 			// Transform no se registra porque toda entidad creada desde
 			// EntityFactory ya nace con ese componente y el Inspector

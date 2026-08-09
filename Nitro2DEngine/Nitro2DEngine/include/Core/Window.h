@@ -91,6 +91,16 @@ public:
 	std::optional<sf::Event>
 	pollEvent();
 
+	/**
+		* @brief Convierte una posición en píxeles de pantalla
+		* a coordenadas del mundo usando la View activa.
+		*
+		* @param pixelPosition Posición del mouse relativa a la ventana.
+		* @return Posición equivalente dentro del mundo.
+		*/
+	[[nodiscard]]sf::Vector2f 
+	ScreenToWorld(const sf::Vector2i& pixelPosition) const;
+
 	std::unique_ptr<sf::RenderWindow> m_window = nullptr; /// Puntero único a la ventana gráfica de tipo sf::RenderWindow, que se utiliza para manejar la ventana y sus eventos.
 private:
 	sf::View m_view; /// Objeto de tipo sf::View que representa la vista de la ventana, utilizada para controlar la visualización del contenido en la ventana.

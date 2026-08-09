@@ -1,10 +1,13 @@
 #pragma once
+
+#include "ECS/PathUtils.h"
 #include "ECS/Registry.h"
 #include "ECS/Components/Transform.h"
 #include "ECS/Components/Name.h"
 #include "ECS/Components/Render.h"
 #include "ECS/Components/PathComponent.h"
 #include "Modules/Math2D.h"
+
 // ======================================================
 // ECS :: EntityFactory.h
 //
@@ -96,10 +99,18 @@ namespace ECS {
 			const std::string& name = "RacingPath") {
 		EntityID entity = CreateEntity(registry, name, { 0.f, 0.f });
 
+
+		// El PathComponent se construye a partir de los puntos de control y el radio del path.
 		PathComponent path;
-		path.points = Math::BuildClosedCatmullRom(controlPoints, samplesPerSegment);
+
+		// Los puntos originales ahora se conservan.
+		path.controlPoints = controlPoints;
+		path.samplesPerSegment = std::max(1, samplesPerSegment);
 		path.closed = true;
 		path.radius = pathRadius;
+
+		// Generar la representación runtime.
+		RebuildPath(path);
 
 		registry.AddComponent<PathComponent>(entity, std::move(path));
 		return entity;

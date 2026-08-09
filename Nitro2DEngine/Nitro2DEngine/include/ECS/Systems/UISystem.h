@@ -12,7 +12,9 @@
 #include "ECS/Components/Obstacle.h"
 #include "ECS/Components/Name.h"
 #include "ECS/Components/PathComponent.h"
+#include "ECS/Components/PathEditorComponent.h"
 #include "ECS/Components/DebugPathComponent.h"
+#include "ECS/PathUtils.h"
 
 namespace ECS {
 	class UISystem final : public System
@@ -402,32 +404,46 @@ namespace ECS {
       {
         ImGui::Separator();
 
-        if (ImGui::CollapsingHeader(
-          "Path",
-          ImGuiTreeNodeFlags_DefaultOpen))
+        if (ImGui::CollapsingHeader("Path",ImGuiTreeNodeFlags_DefaultOpen))
         {
-          ImGui::Text(
-            "Sampled Points: %llu",
-            static_cast<unsigned long long>(
+          ImGui::Text("Control Points: %llu",static_cast<unsigned long long>(
+              path->controlPoints.size()));
+
+          ImGui::Text("Sampled Points: %llu",static_cast<unsigned long long>(
               path->points.size()));
 
-          ImGui::Checkbox(
-            "Closed Path",
-            &path->closed);
+          if (path->controlPoints.empty())
+          {
+            ImGui::TextDisabled("Path is empty.");
+          }
+          else if (path->controlPoints.size() < 4)
+          {
+            ImGui::TextColored(
+              ImVec4(1.f, 0.75f, 0.2f, 1.f), "Add at least 4 control points for Catmull-Rom.");
+          }
+          else
+          {
+            ImGui::TextColored(
+              ImVec4(0.3f, 1.f, 0.5f, 1.f), "Catmull-Rom path generated.");
+          }
 
-          ImGui::DragFloat(
-            "Path Radius",
-            &path->radius,
-            1.f,
-            0.f,
-            1000.f);
+          ImGui::Checkbox("Closed Path", &path->closed);
+
+          ImGui::DragFloat("Path Radius",&path->radius, 1.f, 0.f, 1000.f);
+
+          int samples =path->samplesPerSegment;
+
+          if (ImGui::DragInt("Samples Per Segment", &samples, 1.f, 1, 100))
+          {
+            path->samplesPerSegment = std::max(1, samples);
+
+            ECS::RebuildPath(*path);
+          }
         }
       }
 
 			// --- Debug Path --------------------------------------------------
-      if (auto* debug =
-        registry.TryGetComponent<ECS::DebugPathComponent>(
-          selectedEntity))
+      if (auto* debug = registry.TryGetComponent<ECS::DebugPathComponent>(selectedEntity))
       {
         ImGui::Separator();
 
@@ -462,6 +478,250 @@ namespace ECS {
               1,
               100);
           }
+
+          ImGui::EndDisabled();
+        }
+      }
+
+      // --- Path Editor -------------------------------------------
+      if (auto* pathEditor =registry.TryGetComponent<ECS::PathEditorComponent>(selectedEntity))
+      {
+        ImGui::Separator();
+
+        if (ImGui::CollapsingHeader("Path Editor", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+          // ==================================================
+          // Enable / Disable editor
+          // ==================================================
+
+          bool editEnabled = pathEditor->enabled;
+
+          if (ImGui::Checkbox("Edit Path", &editEnabled))
+          {
+            // Si vamos a activar este editor,
+            // desactivar cualquier otro Path Editor.
+            if (editEnabled)
+            {
+              registry
+                .GetView<ECS::PathEditorComponent>()
+                .Each(
+                  [this](
+                    ECS::EntityID entity,
+                    ECS::PathEditorComponent& otherEditor)
+                  {
+                    if (entity == selectedEntity) return;
+
+                    otherEditor.enabled = false;
+
+                    otherEditor.mode = ECS::PathEditMode::None;
+
+                    otherEditor.selectedControlPoint = -1;
+
+                    otherEditor.draggingControlPoint = false;
+                  });
+            }
+
+            pathEditor->enabled = editEnabled;
+
+            // Al apagar la edición limpiamos
+            // cualquier estado temporal.
+            if (!pathEditor->enabled)
+            {
+              pathEditor->mode = ECS::PathEditMode::None;
+
+              pathEditor->selectedControlPoint = -1;
+
+              pathEditor->draggingControlPoint = false;
+            }
+          }
+
+
+          ImGui::BeginDisabled(!pathEditor->enabled);
+
+
+          // ==================================================
+          // Edit Mode
+          // ==================================================
+
+          const char* currentMode = PathEditModeLabel(pathEditor->mode);
+
+          if (ImGui::BeginCombo("Edit Mode", currentMode))
+          {
+            const PathEditMode modes[] = {
+                PathEditMode::None,
+                PathEditMode::Add,
+                PathEditMode::Move,
+                PathEditMode::Delete
+            };
+
+            for (const PathEditMode mode : modes)
+            {
+              const bool selected = pathEditor->mode == mode;
+
+              if (ImGui::Selectable(PathEditModeLabel(mode), selected))
+              {
+                pathEditor->mode = mode;
+
+                // Cambiar de herramienta cancela
+                // selección y drag anteriores.
+                pathEditor->selectedControlPoint = -1;
+
+                pathEditor->draggingControlPoint = false;
+              }
+
+              if (selected)
+              {
+                ImGui::SetItemDefaultFocus();
+              }
+            }
+
+            ImGui::EndCombo();
+          }
+
+
+          // ==================================================
+          // Instructions
+          // ==================================================
+
+          switch (pathEditor->mode)
+          {
+          case ECS::PathEditMode::None:
+            ImGui::TextDisabled(
+              "Select an editing tool.");
+            break;
+
+          case ECS::PathEditMode::Add:
+            ImGui::TextColored(
+              ImVec4(
+                0.3f,
+                1.f,
+                0.6f,
+                1.f),
+              "Left click on the scene to add points.");
+            break;
+
+          case ECS::PathEditMode::Move:
+            ImGui::TextColored(
+              ImVec4(
+                0.3f,
+                1.f,
+                0.6f,
+                1.f),
+              "Click and drag a control point to move it.");
+            break;
+
+          case ECS::PathEditMode::Delete:
+            ImGui::TextColored(
+              ImVec4(
+                1.f,
+                0.5f,
+                0.3f,
+                1.f),
+              "Click a control point to delete it.");
+            break;
+          }
+
+
+          // ==================================================
+          // Selection Settings
+          // ==================================================
+
+          ImGui::Separator();
+
+          ImGui::DragFloat("Pick Radius", &pathEditor->pointPickRadius, 0.5f, 1.f, 200.f);
+
+          ImGui::Checkbox("Show Control Points", &pathEditor->showControlPoints);
+
+          if (pathEditor->showControlPoints)
+          {
+            ImGui::DragFloat("Control Point Size", &pathEditor->controlPointDrawRadius, 0.25f, 1.f, 50.f);
+          }
+
+
+          // ==================================================
+          // Current Selection
+          // ==================================================
+
+          ImGui::Separator();
+
+          if (pathEditor->selectedControlPoint >= 0)
+          {
+            ImGui::Text("Selected Point: %d", pathEditor->selectedControlPoint);
+
+            if (ImGui::Button("Clear Selection"))
+            {
+              pathEditor->selectedControlPoint = -1;
+
+              pathEditor->draggingControlPoint = false;
+            }
+          }
+          else
+          {
+            ImGui::TextDisabled("Selected Point: none");
+          }
+
+
+          // ==================================================
+          // Path operations
+          // ==================================================
+
+          if (auto* path =registry.TryGetComponent<ECS::PathComponent>(selectedEntity))
+          {
+            ImGui::Separator();
+            ImGui::TextUnformatted("Path Operations");
+
+            if (ImGui::Button("Rebuild Path"))
+            {
+              ECS::RebuildPath(*path);
+            }
+
+
+            ImGui::BeginDisabled(path->controlPoints.empty());
+
+            if (ImGui::Button("Clear All Points"))
+            {
+              ImGui::OpenPopup("ConfirmClearPathPoints");
+            }
+
+            ImGui::EndDisabled();
+
+
+            // ==============================================
+            // Confirmation popup
+            // ==============================================
+
+            if (ImGui::BeginPopupModal("ConfirmClearPathPoints", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+            {
+              ImGui::TextUnformatted("Delete all control points?");
+
+              ImGui::TextDisabled("This action cannot be undone.");
+
+              ImGui::Separator();
+
+              if (ImGui::Button("Delete All", ImVec2(120.f, 0.f)))
+              {
+                path->controlPoints.clear();
+
+                ECS::RebuildPath(*path);
+
+                pathEditor->selectedControlPoint = -1;
+
+                pathEditor->draggingControlPoint = false;
+
+                ImGui::CloseCurrentPopup();
+              }
+
+              ImGui::SameLine();
+
+              if (ImGui::Button("Cancel", ImVec2(120.f, 0.f)))
+              {
+                ImGui::CloseCurrentPopup();
+              }
+
+              ImGui::EndPopup();
+            }
+          }
+
 
           ImGui::EndDisabled();
         }
@@ -761,9 +1021,9 @@ namespace ECS {
     }
 
     /**
- * @brief Sincroniza el buffer de ruta cuando cambia
- * la entidad seleccionada.
- */
+      * @brief Sincroniza el buffer de ruta cuando cambia
+      * la entidad seleccionada.
+      */
     void 
     SyncTexturePathBuffer(EntityID entity, const Render& render)
     {
@@ -1148,6 +1408,28 @@ namespace ECS {
         if (!candidateExists) return candidate;
 
         ++suffix;
+      }
+    }
+
+    [[nodiscard]] const char*
+    PathEditModeLabel(PathEditMode mode) const noexcept
+    {
+      switch (mode)
+      {
+      case PathEditMode::None:
+        return "None";
+
+      case PathEditMode::Add:
+        return "Add Points";
+
+      case PathEditMode::Move:
+        return "Move Points";
+
+      case PathEditMode::Delete:
+        return "Delete Points";
+
+      default:
+        return "Unknown";
       }
     }
 
