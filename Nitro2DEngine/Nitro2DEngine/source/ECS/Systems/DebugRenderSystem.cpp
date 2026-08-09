@@ -1,6 +1,7 @@
 #include "ECS/Systems/DebugRenderSystem.h"
 #include "ECS/Registry.h"
 #include "ECS/Components/PathComponent.h"
+#include "ECS/Components/PathEditorComponent.h"
 #include "ECS/Components/DebugPathComponent.h"
 #include "ECS/Components/Transform.h"
 #include "ECS/Components/SteeringDebugComponent.h"
@@ -49,6 +50,39 @@ namespace ECS
 
         DrawAgentDebug(transform, debug);
       });
+
+    // ======================================================
+    // PATH EDITOR CONTROL POINTS
+    // ======================================================
+
+    registry.GetView<PathComponent, PathEditorComponent>().Each(
+        [this](
+          EntityID entity,
+          PathComponent& path,
+          PathEditorComponent& editor)
+        {
+          (void)entity;
+
+          if (!editor.enabled) return;
+
+          if (!editor.showControlPoints) return;
+
+          for (std::size_t i = 0;i < path.controlPoints.size();++i)
+          {
+            const bool selected = editor.selectedControlPoint >= 0 && static_cast<std::size_t>(
+                editor.selectedControlPoint) == i;
+
+            const sf::Color color = selected ? sf::Color::Magenta : sf::Color::White;
+
+            float radius = editor.controlPointDrawRadius;
+
+            // El seleccionado se dibuja ligeramente
+            // más grande para que sea identificable.
+            if (selected) radius *= 1.5f;
+
+            DrawControlPoint(path.controlPoints[i], radius, color);
+          }
+        });
   }
 
   void
@@ -225,7 +259,7 @@ namespace ECS
   }
 
   void
-  DebugRenderSystem::DrawLine(const sf::Vector2f& start, const sf::Vector2f& end, const sf::Color& color) 
+    DebugRenderSystem::DrawLine(const sf::Vector2f& start, const sf::Vector2f& end, const sf::Color& color)
   {
     sf::VertexArray line(sf::PrimitiveType::Lines, 2);
 
@@ -238,14 +272,14 @@ namespace ECS
     m_window.draw(line);
   }
 
-  void 
-  DebugRenderSystem::DrawPoint(const sf::Vector2f& position,float radius,const sf::Color& color)
+  void
+    DebugRenderSystem::DrawPoint(const sf::Vector2f& position, float radius, const sf::Color& color)
   {
     if (radius <= 0.f) return;
 
     sf::CircleShape marker(radius);
 
-    marker.setOrigin({radius, radius});
+    marker.setOrigin({ radius, radius });
 
     marker.setPosition(position);
     marker.setFillColor(color);
@@ -253,9 +287,9 @@ namespace ECS
     m_window.draw(marker);
   }
 
-  void 
-  DebugRenderSystem::DrawVector(const sf::Vector2f& origin, const sf::Vector2f& vector,
-                                float scale, const sf::Color& color)
+  void
+    DebugRenderSystem::DrawVector(const sf::Vector2f& origin, const sf::Vector2f& vector,
+      float scale, const sf::Color& color)
   {
     if (scale <= 0.f) return;
 
@@ -269,12 +303,12 @@ namespace ECS
     DrawPoint(end, 2.5f, color);
   }
 
-  void 
-  DebugRenderSystem::DrawAgentDebug(const Transform& transform, const SteeringDebugComponent& debug)
+  void
+    DebugRenderSystem::DrawAgentDebug(const Transform& transform, const SteeringDebugComponent& debug)
   {
     const sf::Vector2f& agentPosition = transform.position;
 
-      
+
 
     // --------------------------------------------------
     // Velocidad
@@ -340,7 +374,29 @@ namespace ECS
 
     if (debug.drawFinalSteeringForce)
     {
-      DrawVector( agentPosition, debug.finalSteeringForce, debug.forceScale, debug.finalSteeringForceColor);
+      DrawVector(agentPosition, debug.finalSteeringForce, debug.forceScale, debug.finalSteeringForceColor);
     }
+  }
+
+  void
+  DebugRenderSystem::DrawControlPoint(const sf::Vector2f& position, float radius, const sf::Color& color)
+  {
+    if (!m_window.m_window) return;
+
+    radius = std::max(1.f, radius);
+
+    sf::CircleShape point(radius);
+
+    point.setOrigin({radius, radius});
+
+    point.setPosition(position);
+
+    point.setFillColor(color);
+
+    point.setOutlineThickness(2.f);
+
+    point.setOutlineColor(sf::Color::Black);
+
+    m_window.m_window->draw(point);
   }
 }

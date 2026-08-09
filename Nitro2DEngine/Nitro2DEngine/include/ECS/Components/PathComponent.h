@@ -16,11 +16,38 @@
 // entidad, igual que ya hace SteeringComponent::target.
 // ======================================================
 namespace ECS {
-	struct PathComponent {
-		std::vector<sf::Vector2f> points; // polilinea densa, ya muestreada
-		bool closed{ true };              // true = circuito cerrado (vuelve al inicio)
-		float radius{ 40.f };             // ancho de tolerancia del camino (mitad del ancho transitable)
+  struct PathComponent
+  {
+    // --------------------------------------------------
+    // Datos editables
+    // --------------------------------------------------
 
-		PathComponent() = default;
-	};
+    // Puntos principales colocados por el diseñador.
+    // Son la fuente de verdad del path.
+    std::vector<sf::Vector2f> controlPoints;
+
+    // Cantidad de muestras Catmull-Rom generadas entre
+    // cada pareja de puntos de control.
+    int samplesPerSegment{ 20 };
+
+    // Determina si el camino vuelve al primer punto.
+    bool closed{ true };
+
+    // Radio visual/lógico del corredor.
+    float radius{ 40.f };
+
+
+    // --------------------------------------------------
+    // Datos derivados
+    // --------------------------------------------------
+
+    // Polilínea densa utilizada en runtime por
+    // Path Following.
+    //
+    // NO debe editarse manualmente desde el editor.
+    std::vector<sf::Vector2f> points;
+
+
+    PathComponent() = default;
+  };
 }

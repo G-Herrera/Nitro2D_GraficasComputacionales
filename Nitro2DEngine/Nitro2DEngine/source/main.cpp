@@ -1,23 +1,30 @@
 #include <Prerequisites.h>
+// Librerías externas
 #include <Core/Window.h>
 #include <Core/CShape.h>
+#include "Modules/Math2D.h"
 #include "ECS/Registry.h"
 #include "ECS/EntityFactory.h"
+// Componentes
 #include "ECS/Components/Transform.h"
 #include "ECS/Components/Render.h"
 #include "ECS/Components/Camera.h"
-#include "ECS/Systems/RenderSystem.h"
-#include "ECS/Systems/CameraSystem.h"
-#include "ECS/Systems/UISystem.h"
-#include "ECS/Systems/SteeringSystem.h"
+#include "ECS/Components/SteeringDebugComponent.h"
 #include "ECS/Components/Velocity.h"
 #include "ECS/Components/Acceleration.h"
 #include "ECS/Components/SteeringComponent.h"
 #include "ECS/Components/PathComponent.h"
 #include "ECS/Components/DebugPathComponent.h"
+// Sistemas
+#include "ECS/Systems/RenderSystem.h"
+#include "ECS/Systems/CameraSystem.h"
+#include "ECS/Systems/UISystem.h"
+#include "ECS/Systems/SteeringSystem.h"
+#include "ECS/Systems/PathEditorSystem.h"
 #include "ECS/Systems/DebugRenderSystem.h"
-#include "ECS/Components/SteeringDebugComponent.h"
-#include "Modules/Math2D.h"
+
+
+
 
 
 //Window* g_window = nullptr;
@@ -47,9 +54,10 @@ int main()
   //Registro de sistemas en el ECS
   registry.AddSystem<ECS::SteeringSystem>();
   registry.AddSystem<ECS::CameraSystem>(g_window);
+  registry.AddSystem<ECS::PathEditorSystem>(g_window);
+  registry.AddSystem<ECS::UISystem>();
   registry.AddSystem<ECS::RenderSystem>(g_window);
   registry.AddSystem<ECS::DebugRenderSystem>(g_window);
-  registry.AddSystem<ECS::UISystem>();
   
 
   //m_window es un puntero a sf::RenderWindow.

@@ -14,53 +14,40 @@ namespace ECS
   class DebugRenderSystem final : public System
   {
   public:
-    explicit DebugRenderSystem(Window& window) noexcept
-      : m_window(window)
-    {
-    }
+    explicit DebugRenderSystem(Window& window) noexcept : m_window(window){}
 
     ~DebugRenderSystem() override = default;
 
-    void OnUpdate(
-      Registry& registry,
-      float deltaTime) override;
+    void 
+    OnUpdate(Registry& registry, float deltaTime) override;
 
   private:
-    void DrawPath(
-      const PathComponent& path,
-      const DebugPathComponent& debug);
+    void
+    DrawPath(const PathComponent& path, const DebugPathComponent& debug);
 
-    void DrawCenterLine(
-      const PathComponent& path,
-      const sf::Color& color);
+    void 
+    DrawCenterLine(const PathComponent& path, const sf::Color& color);
 
-    void DrawPathBounds(
-      const PathComponent& path,
-      const sf::Color& color);
+    void 
+    DrawPathBounds(const PathComponent& path, const sf::Color& color);
 
-    void DrawSamplePoints(
-      const PathComponent& path,
-      const DebugPathComponent& debug);
+    void 
+    DrawSamplePoints(const PathComponent& path, const DebugPathComponent& debug);
 
-    void DrawAgentDebug(
-      const Transform& transform,
-      const SteeringDebugComponent& debug);
+    void
+    DrawAgentDebug(const Transform& transform, const SteeringDebugComponent& debug);
 
-    void DrawVector(
-      const sf::Vector2f& origin,
-      const sf::Vector2f& vector,
-      float scale,
-      const sf::Color& color);
+    void 
+    DrawVector(const sf::Vector2f& origin, const sf::Vector2f& vector, float scale, const sf::Color& color);
 
-    void DrawLine(
-      const sf::Vector2f& start,
-      const sf::Vector2f& end,
-      const sf::Color& color);
+    void 
+    DrawLine(const sf::Vector2f& start, const sf::Vector2f& end, const sf::Color& color);
 
-    void DrawPoint(
-      const sf::Vector2f& position,
-      float radius,
-      const sf::Color& color);
+    void 
+    DrawPoint(const sf::Vector2f& position, float radius, const sf::Color& color);
+
+    void 
+    DrawControlPoint(const sf::Vector2f& position, float radius, const sf::Color& color);
 
     Window& m_window;
   };
