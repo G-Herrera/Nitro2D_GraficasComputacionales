@@ -1,4 +1,7 @@
 #pragma once
+#include <vector>
+#include <string>
+#include <functional>
 #include "ECS/Registry.h"
 #include "ECS/Components/Velocity.h"
 #include "ECS/Components/Acceleration.h"
@@ -6,9 +9,7 @@
 #include "ECS/Components/Obstacle.h"
 #include "ECS/Components/Camera.h"
 #include "ECS/Components/Name.h"
-#include <vector>
-#include <string>
-#include <functional>
+#include "ECS/Components/Render.h"
 
 //=========================================================
 // ECS::Editor::ComponentRegistry
@@ -59,17 +60,33 @@ namespace ECS::Editor {
 
 	private:
 		ComponentRegistry() {
+			RegisterCustom("Render",
+
+				// ¿La entidad ya tiene Render?
+				[](Registry& registry, EntityID entity)
+				{
+					return registry.HasComponent<Render>(entity);
+				},
+
+				// ¿Cómo se construye Render desde el editor?
+				[](Registry& registry, EntityID entity)
+				{
+					if (registry.HasComponent<Render>(entity)) return;
+
+					Render render = Render::Make(RECTANGLE, sf::Color::White);
+
+					registry.AddComponent<Render>(entity, std::move(render));
+				});
 			Register<Velocity>("Velocity");
 			Register<Acceleration>("Acceleration");
 			Register<Obstacle>("Obstacle");
 			Register<Camera>("Camera");
 			Register<SteeringComponent>("Steering Component", { "Velocity", "Acceleration" });
 			Register<Name>("Name");
-			// Nota: Transform y Render no se listan aquí porque en este
-			// proyecto toda entidad ya nace con Transform, y Render
-			// requiere parámetros de construcción (tipo de forma,
-			// textura) que no tienen un valor "por defecto" razonable
-			// para un botón genérico.
+			
+			// Transform no se registra porque toda entidad creada desde
+			// EntityFactory ya nace con ese componente y el Inspector
+			// actualmente lo considera obligatorio.
 		}
 
 		/**
@@ -104,6 +121,34 @@ namespace ECS::Editor {
 					registry.AddComponent<T>(entity);
 				}
 				};
+
+			m_types.push_back(std::move(info));
+		}
+
+		/**
+			* @brief Registra un componente utilizando funciones personalizadas.
+			*
+			* Se utiliza para componentes que no pueden añadirse correctamente
+			* mediante un constructor por defecto, como Render, que necesita
+			* crear una forma visual válida.
+			*
+			* @param name Nombre mostrado dentro del menú Add Component.
+			* @param hasComponent Función que comprueba si la entidad ya posee
+			*        el componente.
+			* @param addComponent Función que construye y añade el componente.
+			*/
+		void RegisterCustom(
+			std::string name,
+			std::function<bool(Registry&, EntityID)> hasComponent,
+			std::function<void(Registry&, EntityID)> addComponent)
+		{
+			ComponentTypeInfo info;
+
+			info.name = std::move(name);
+
+			info.hasComponent = std::move(hasComponent);
+
+			info.addComponent = std::move(addComponent);
 
 			m_types.push_back(std::move(info));
 		}

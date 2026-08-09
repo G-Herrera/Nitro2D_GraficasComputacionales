@@ -2,13 +2,14 @@
 #include "Prerequisites.h"
 #include "ECS/System.h"
 #include "ECS/Registry.h"
+#include "ECS/EntityFactory.h"
+#include "ECS/Editor/ComponentRegistry.h"
 #include "ECS/Components/Transform.h"
 #include "ECS/Components/Render.h"
 #include "ECS/Components/Camera.h"
 #include "ECS/Components/SteeringComponent.h"
 #include "ECS/Components/SteeringDebugComponent.h"
 #include "ECS/Components/Obstacle.h"
-#include "ECS/Editor/ComponentRegistry.h"
 #include "ECS/Components/Name.h"
 #include "ECS/Components/PathComponent.h"
 #include "ECS/Components/DebugPathComponent.h"
@@ -201,23 +202,48 @@ namespace ECS {
       * 
 			* @note Este método crea una ventana de ImGui que lista todas las entidades vivas en el registro.
       */
-		void 
-		Outliner(Registry& registry) {
-			ImGui::Begin("Hierarchy");
+    void
+    Outliner(Registry& registry) {
+      ImGui::Begin("Hierarchy");
 
-			for (auto entity : registry.GetAllEntities()) {
-				if (!registry.IsAlive(entity)) continue;
+      // --------------------------------------------------
+      // Entity creation controls
+      // --------------------------------------------------
 
-        std::string label = EntityLabel(registry, entity);
+      if (ImGui::Button("+ Create Empty",ImVec2(-1.f, 0.f)))
+      {
+        const std::string entityName = GenerateUniqueEntityName(registry);
 
-				if (ImGui::Selectable(label.c_str(), selectedEntity == entity))
-				{
-					selectedEntity = entity;
-				}
-			}
+        const EntityID newEntity = ECS::CreateEntity(registry, entityName, { 0.f, 0.f });
+
+        // Seleccionar inmediatamente la nueva entidad.
+        selectedEntity = newEntity;
+      }
+
+      ImGui::Separator();
+
+      // --------------------------------------------------
+      // Entity list
+      // --------------------------------------------------
+
+      for (const EntityID entity : registry.GetAllEntities())
+      {
+        if (!registry.IsAlive(entity)) continue;
+
+        const std::string label = EntityLabel(registry, entity);
+
+        // El sufijo oculto garantiza un ID único para ImGui,
+        // incluso si dos entidades terminan teniendo el mismo nombre.
+        const std::string imguiLabel = label + "##Entity_" + std::to_string(entity);
+
+        if (ImGui::Selectable(imguiLabel.c_str(), selectedEntity == entity))
+        {
+          selectedEntity = entity;
+        }
+      }
 
       ImGui::End();
-		}
+    }
 
 		/**
 			* @brief Muestra la ventana de Inspector, que permite ver y modificar los componentes de la entidad seleccionada.
@@ -687,6 +713,63 @@ namespace ECS {
 		ECS::EntityID selectedEntity = ECS::NULL_ENTITY;///< ID de la entidad actualmente seleccionada en el Outliner.
 		bool m_initialized = false;///< Indica si el sistema ha sido inicializado (para aplicar el estilo de ImGui una sola vez).
 		float m_nameWarningTimer = 0.f;///< Temporizador para mostrar advertencia de nombre vacío en el Inspector.
+
+    /**
+      * @brief Genera un nombre único para una nueva entidad.
+      *
+      * Devuelve "New Entity" si el nombre está disponible.
+      * Si ya existe, prueba "New Entity (1)", "New Entity (2)", etc.
+      *
+      * @param registry Registry utilizado para consultar entidades vivas.
+      * @return Nombre único para mostrar en la Hierarchy.
+      */
+    [[nodiscard]] std::string
+    GenerateUniqueEntityName(Registry& registry) const {
+      constexpr const char* baseName = "New Entity";
+
+      bool baseNameExists = false;
+
+      for (const EntityID entity : registry.GetAllEntities())
+      {
+        if (!registry.IsAlive(entity)) continue;
+
+        const Name* name = registry.TryGetComponent<Name>(entity);
+
+        if (name && name->name == baseName)
+        {
+          baseNameExists = true;
+          break;
+        }
+      }
+
+      if (!baseNameExists) return baseName;
+
+      int suffix = 1;
+
+      while (true)
+      {
+        const std::string candidate = std::string(baseName) + " (" + std::to_string(suffix) + ")";
+
+        bool candidateExists = false;
+
+        for (const EntityID entity : registry.GetAllEntities())
+        {
+          if (!registry.IsAlive(entity)) continue;
+
+          const Name* name = registry.TryGetComponent<Name>(entity);
+
+          if (name && name->name == candidate)
+          {
+            candidateExists = true;
+            break;
+          }
+        }
+
+        if (!candidateExists) return candidate;
+
+        ++suffix;
+      }
+    }
 
     /**
 			* @brief Devuelve la etiqueta de una entidad para mostrar en la interfaz de usuario.
