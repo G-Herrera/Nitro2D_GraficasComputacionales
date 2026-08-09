@@ -19,6 +19,7 @@
 #include <cmath>
 #include <random>
 #include <algorithm>
+#include <array>
 
 //Third Parties
 #include <SFML/Graphics.hpp>
