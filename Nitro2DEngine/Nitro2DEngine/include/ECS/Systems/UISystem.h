@@ -191,6 +191,17 @@ namespace ECS {
         m_nameWarningTimer -= deltaTime;
       }
 
+      if (m_textureMessageTimer > 0.f)
+      {
+        m_textureMessageTimer -= deltaTime;
+
+        if (m_textureMessageTimer <= 0.f)
+        {
+          m_textureLoadSucceeded = false;
+          m_textureLoadFailed = false;
+        }
+      }
+
       Outliner(registry);
       Inspector(registry);
 		}
@@ -263,30 +274,6 @@ namespace ECS {
         return;
       }
 
-      auto EditSFMLColor = [](const char* label, sf::Color& color)
-      {
-        float values[4] = {
-            static_cast<float>(color.r) / 255.f,
-            static_cast<float>(color.g) / 255.f,
-            static_cast<float>(color.b) / 255.f,
-            static_cast<float>(color.a) / 255.f
-        };
-
-        if (ImGui::ColorEdit4(label, values))
-        {
-          color.r = static_cast<std::uint8_t>(
-            values[0] * 255.f);
-
-          color.g = static_cast<std::uint8_t>(
-            values[1] * 255.f);
-
-          color.b = static_cast<std::uint8_t>(
-            values[2] * 255.f);
-
-          color.a = static_cast<std::uint8_t>(
-            values[3] * 255.f);
-        }
-      };
 
       if (ImGui::Button("+ Add Component")) {
         ImGui::OpenPopup("AddComponentPopup");
@@ -357,37 +344,29 @@ namespace ECS {
       // --- Render --------------------------------------------------
       if (registry.HasComponent<ECS::Render>(selectedEntity))
       {
-        bool renderOpen = ImGui::CollapsingHeader("Render",
-          ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_AllowOverlap);
+        const bool renderOpen =ImGui::CollapsingHeader(
+            "Render",
+            ImGuiTreeNodeFlags_DefaultOpen |
+            ImGuiTreeNodeFlags_AllowOverlap);
 
-        if (RemoveComponentButton("X##Render")) {
+        if (RemoveComponentButton("X##Render"))
+        {
           registry.RemoveComponent<ECS::Render>(selectedEntity);
+
+          // Invalidar el buffer, porque ya no existe
+          // un Render asociado a esta selección.
+          m_textureBufferEntity = ECS::NULL_ENTITY;
+
+          m_texturePathBuffer.fill('\0');
+
           ImGui::End();
           return;
         }
 
-        if (renderOpen) {
+        if (renderOpen)
+        {
           auto& render = registry.GetComponent<ECS::Render>(selectedEntity);
-
-          float color[4] = {
-              render.fillColor.r / 255.f,
-              render.fillColor.g / 255.f,
-              render.fillColor.b / 255.f,
-              render.fillColor.a / 255.f
-          };
-
-          if (ImGui::ColorEdit4("Color", color))
-          {
-            render.fillColor = sf::Color(
-              static_cast<uint8_t>(color[0] * 255),
-              static_cast<uint8_t>(color[1] * 255),
-              static_cast<uint8_t>(color[2] * 255),
-              static_cast<uint8_t>(color[3] * 255)
-            );
-
-            if (render.shape)
-              render.shape->setFillColor(render.fillColor);
-          }
+          DrawRenderInspector(selectedEntity, render);
         }
       }
 
@@ -713,6 +692,407 @@ namespace ECS {
 		ECS::EntityID selectedEntity = ECS::NULL_ENTITY;///< ID de la entidad actualmente seleccionada en el Outliner.
 		bool m_initialized = false;///< Indica si el sistema ha sido inicializado (para aplicar el estilo de ImGui una sola vez).
 		float m_nameWarningTimer = 0.f;///< Temporizador para mostrar advertencia de nombre vacío en el Inspector.
+
+    // Entidad cuyo Texture Path se encuentra cargado actualmente en el buffer del Inspector.
+    ECS::EntityID m_textureBufferEntity{ECS::NULL_ENTITY};
+
+    // Ruta editable antes de intentar cargarla.
+    std::array<char, 512> m_texturePathBuffer{};
+
+    // Mensaje temporal del resultado de carga.
+    bool m_textureLoadSucceeded{ false };
+    bool m_textureLoadFailed{ false };
+    float m_textureMessageTimer{ 0.f };
+
+    /**
+      * @brief Edita un sf::Color mediante ImGui.
+      *
+      * Convierte temporalmente los canales de 0-255 utilizados
+      * por SFML al rango 0-1 utilizado por ImGui.
+      */
+    void 
+    EditSFMLColor(const char* label, sf::Color& color)
+    {
+      float values[4] = {
+          static_cast<float>(color.r) / 255.f,
+          static_cast<float>(color.g) / 255.f,
+          static_cast<float>(color.b) / 255.f,
+          static_cast<float>(color.a) / 255.f
+      };
+
+      if (ImGui::ColorEdit4(label, values))
+      {
+        color.r = static_cast<std::uint8_t>(values[0] * 255.f);
+        color.g = static_cast<std::uint8_t>(values[1] * 255.f);
+        color.b = static_cast<std::uint8_t>(values[2] * 255.f);
+        color.a = static_cast<std::uint8_t>(values[3] * 255.f);
+      }
+    }
+
+    /**
+      * @brief Devuelve el nombre visible de un ShapeType.
+      */
+    [[nodiscard]] const char*
+    ShapeTypeLabel(ShapeType type) const noexcept
+    {
+      switch (type)
+      {
+      case EMPTY:
+        return "Empty";
+
+      case CIRCLE:
+        return "Circle";
+
+      case RECTANGLE:
+        return "Rectangle";
+
+      case TRIANGLE:
+        return "Triangle";
+
+      case POLYGON:
+        return "Polygon";
+
+      case LINE:
+        return "Line";
+
+      default:
+        return "Unknown";
+      }
+    }
+
+    /**
+ * @brief Sincroniza el buffer de ruta cuando cambia
+ * la entidad seleccionada.
+ */
+    void 
+    SyncTexturePathBuffer(EntityID entity, const Render& render)
+    {
+      if (m_textureBufferEntity == entity)return;
+
+      m_textureBufferEntity =entity;
+
+      m_texturePathBuffer.fill('\0');
+
+      std::snprintf(m_texturePathBuffer.data(),m_texturePathBuffer.size(),"%s",
+                    render.texturePath.c_str());
+
+      m_textureLoadSucceeded = false;
+
+      m_textureLoadFailed = false;
+
+      m_textureMessageTimer = 0.f;
+    }
+
+    /**
+      * @brief Muestra los controles geométricos específicos del ShapeType actual.
+      */
+    void 
+    DrawShapeDimensions(Render& render)
+    {
+      if (!render.shape)
+      {
+        ImGui::TextDisabled("This Render has no drawable shape.");
+        return;
+      }
+
+      switch (render.shapeType)
+      {
+      case CIRCLE:
+      {
+        auto circle = std::dynamic_pointer_cast<sf::CircleShape>(render.shape);
+
+        if (!circle)
+        {
+          ImGui::TextColored(ImVec4(1.f, 0.3f, 0.3f, 1.f), "Invalid CircleShape instance.");
+          return;
+        }
+
+        float radius = circle->getRadius();
+
+        if (ImGui::DragFloat("Radius", &radius, 0.5f, 1.f, 2000.f))
+        {
+          circle->setRadius(radius);
+
+          circle->setOrigin({radius,radius});
+        }
+        break;
+      }
+
+      case RECTANGLE:
+      {
+        auto rectangle =std::dynamic_pointer_cast<sf::RectangleShape>(render.shape);
+
+        if (!rectangle)
+        {
+          ImGui::TextColored(ImVec4(1.f, 0.3f, 0.3f, 1.f),"Invalid RectangleShape instance.");
+          return;
+        }
+
+        sf::Vector2f size = rectangle->getSize();
+
+        if (ImGui::DragFloat2("Size", &size.x, 1.f, 1.f, 4000.f))
+        {
+          size.x = std::max(1.f, size.x);
+          size.y = std::max(1.f, size.y);
+
+          rectangle->setSize(size);
+
+          rectangle->setOrigin(size / 2.f);
+        }
+        break;
+      }
+
+      case LINE:
+      {
+        auto line = std::dynamic_pointer_cast<sf::RectangleShape>(render.shape);
+
+        if (!line)
+        {
+          ImGui::TextColored(ImVec4(1.f, 0.3f, 0.3f, 1.f), "Invalid Line shape instance.");
+          return;
+        }
+
+        sf::Vector2f size = line->getSize();
+
+        float length =size.x;
+        float thickness =size.y;
+
+        bool changed = false;
+
+        changed |= ImGui::DragFloat("Length", &length, 1.f, 1.f, 5000.f);
+
+        changed |= ImGui::DragFloat("Thickness", &thickness, 0.25f, 1.f, 500.f);
+
+        if (changed)
+        {
+          length =std::max(1.f, length);
+          thickness =std::max(1.f, thickness);
+
+          line->setSize({length, thickness});
+
+          // La línea comienza en Transform.position
+          // y se extiende hacia su eje X local.
+          line->setOrigin({0.f, thickness / 2.f});
+        }
+        break;
+      }
+
+      case TRIANGLE:
+      {
+        auto triangle =std::dynamic_pointer_cast<sf::ConvexShape>(render.shape);
+
+        if (!triangle ||triangle->getPointCount() != 3)
+        {
+          ImGui::TextColored(ImVec4(1.f, 0.3f, 0.3f, 1.f), "Invalid Triangle shape instance.");
+          return;
+        }
+
+        float width = triangle->getPoint(1).x;
+        float height = triangle->getPoint(2).y;
+
+        bool changed = false;
+
+        changed |= ImGui::DragFloat("Width", &width, 1.f, 1.f, 4000.f);
+
+        changed |= ImGui::DragFloat("Height", &height, 1.f, 1.f, 4000.f);
+
+        if (changed)
+        {
+          width = std::max(1.f, width);
+          height = std::max(1.f, height);
+
+          triangle->setPoint(0, { 0.f, 0.f });
+          triangle->setPoint(1, { width, 0.f });
+          triangle->setPoint(2, {width / 2.f, height});
+
+          triangle->setOrigin({width / 2.f, height / 2.f});
+        }
+        break;
+      }
+
+      case POLYGON:
+      {
+        auto polygon =std::dynamic_pointer_cast<sf::ConvexShape>(render.shape);
+
+        if (!polygon || polygon->getPointCount() != 5)
+        {
+          ImGui::TextColored(ImVec4(1.f, 0.3f, 0.3f, 1.f), "Invalid Polygon shape instance.");
+          return;
+        }
+
+        // La geometría predeterminada utiliza el punto
+        // derecho como ancho máximo y el inferior como alto.
+        float width = polygon->getPoint(2).x;
+        float height = polygon->getPoint(3).y;
+
+        bool changed = false;
+
+        changed |= ImGui::DragFloat("Width", &width, 1.f, 1.f, 4000.f);
+        changed |= ImGui::DragFloat("Height", &height, 1.f, 1.f, 4000.f);
+
+        if (changed)
+        {
+          width = std::max(1.f, width);
+          height = std::max(1.f, height);
+
+          polygon->setPoint(0, {0.f, height * 0.5f});
+          polygon->setPoint(1, {width * 0.2f, 0.f});
+          polygon->setPoint(2, {width * 0.8f, 0.f});
+          polygon->setPoint(3, {width, height * 0.5f});
+          polygon->setPoint(4, {width * 0.5f, height });
+
+          polygon->setOrigin({width / 2.f, height / 2.f});
+        }
+        break;
+      }
+
+      case EMPTY:
+      {
+        ImGui::TextDisabled("Select a Shape Type to create geometry.");
+        break;
+      }
+
+      default:
+        break;
+      }
+    }
+
+    /**
+      * @brief Dibuja todos los controles del componente Render.
+      */
+    void 
+    DrawRenderInspector(EntityID entity,Render& render)
+    {
+      SyncTexturePathBuffer(entity,render);
+
+      // --------------------------------------------------
+      // General
+      // --------------------------------------------------
+
+      ImGui::Checkbox("Visible", &render.visible);
+      ImGui::DragInt("Z Order", &render.zOrder, 1.f, -10000, 10000);
+
+      // --------------------------------------------------
+      // Shape Type
+      // --------------------------------------------------
+
+      const char* currentShapeLabel = ShapeTypeLabel(render.shapeType);
+
+      if (ImGui::BeginCombo("Shape Type", currentShapeLabel))
+      {
+        constexpr ShapeType shapeTypes[] = {
+            EMPTY,
+            CIRCLE,
+            RECTANGLE,
+            TRIANGLE,
+            POLYGON,
+            LINE
+        };
+
+        for (const ShapeType candidate : shapeTypes)
+        {
+          const bool selected = candidate == render.shapeType;
+
+          if (ImGui::Selectable(ShapeTypeLabel(candidate), selected))
+          {
+            render.RebuildShape(candidate);
+          }
+
+          if (selected) ImGui::SetItemDefaultFocus();
+        }
+
+        ImGui::EndCombo();
+      }
+
+      // --------------------------------------------------
+      // Shape dimensions
+      // --------------------------------------------------
+
+      ImGui::Separator();
+      ImGui::TextUnformatted("Geometry");
+
+      DrawShapeDimensions(render);
+
+      // --------------------------------------------------
+      // Fill Color
+      // --------------------------------------------------
+
+      ImGui::Separator();
+      ImGui::TextUnformatted("Appearance");
+
+      EditSFMLColor("Fill Color",render.fillColor);
+
+      if (render.shape) render.shape->setFillColor(render.fillColor);
+
+      // --------------------------------------------------
+      // Texture
+      // --------------------------------------------------
+
+      ImGui::Separator();
+      ImGui::TextUnformatted("Texture");
+
+      ImGui::InputText("Texture Path", m_texturePathBuffer.data(), m_texturePathBuffer.size());
+
+      const bool canLoadTexture = render.shape != nullptr && m_texturePathBuffer[0] != '\0';
+
+      ImGui::BeginDisabled(!canLoadTexture);
+
+      if (ImGui::Button("Load Texture"))
+      {
+        const std::string requestedPath{m_texturePathBuffer.data()};
+
+        const bool loaded = render.SetTexture(requestedPath);
+
+        m_textureLoadSucceeded = loaded;
+        m_textureLoadFailed = !loaded;
+        m_textureMessageTimer =3.f;
+      }
+
+      ImGui::EndDisabled();
+
+      ImGui::SameLine();
+
+      ImGui::BeginDisabled(!render.texture);
+
+      if (ImGui::Button("Clear Texture"))
+      {
+        render.ClearTexture();
+
+        m_texturePathBuffer.fill('\0');
+        m_textureLoadSucceeded = false;
+        m_textureLoadFailed = false;
+        m_textureMessageTimer = 0.f;
+      }
+
+      ImGui::EndDisabled();
+
+      if (render.texture)
+      {
+        ImGui::TextColored(ImVec4(0.3f, 1.f, 0.5f, 1.f), "Texture loaded");
+
+        if (!render.texturePath.empty())
+        {
+          ImGui::TextWrapped("%s", render.texturePath.c_str());
+        }
+      }
+      else
+      {
+        ImGui::TextDisabled("No texture loaded");
+      }
+
+      if (m_textureMessageTimer > 0.f)
+      {
+        if (m_textureLoadSucceeded)
+        {
+          ImGui::TextColored(ImVec4(0.3f, 1.f, 0.5f, 1.f), "Texture loaded successfully.");
+        }
+
+        if (m_textureLoadFailed)
+        {
+          ImGui::TextColored(ImVec4(1.f, 0.3f, 0.3f, 1.f), "Failed to load texture.");
+        }
+      }
+    }
 
     /**
       * @brief Genera un nombre único para una nueva entidad.
