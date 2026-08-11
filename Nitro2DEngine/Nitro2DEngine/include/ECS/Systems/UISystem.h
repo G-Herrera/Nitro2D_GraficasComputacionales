@@ -929,6 +929,149 @@ namespace ECS {
           }
 
           // ==============================================
+          // Leaderboard
+          // ==============================================
+
+          ImGui::Separator();
+          ImGui::TextUnformatted("Leaderboard");
+
+          struct LeaderboardEntry
+          {
+            ECS::EntityID entity;
+            int position;
+            int laps;
+            float progress;
+          };
+
+          std::vector<LeaderboardEntry> leaderboard;
+
+          registry
+            .GetView<ECS::RaceParticipantComponent>()
+            .Each(
+              [&](ECS::EntityID entity,
+                ECS::RaceParticipantComponent& participant)
+              {
+                // Solo participantes de ESTA carrera.
+                if (participant.raceManagerEntity !=
+                  selectedEntity)
+                {
+                  return;
+                }
+
+                leaderboard.push_back({
+                    entity,
+                    participant.racePosition,
+                    participant.completedLaps,
+                    participant.lapProgress
+                  });
+              });
+
+          std::sort(
+            leaderboard.begin(),
+            leaderboard.end(),
+            [](
+              const LeaderboardEntry& a,
+              const LeaderboardEntry& b)
+            {
+              // Los que ya tienen posición calculada
+              // aparecen antes de los no inicializados.
+              if (a.position <= 0 &&
+                b.position > 0)
+              {
+                return false;
+              }
+
+              if (b.position <= 0 &&
+                a.position > 0)
+              {
+                return true;
+              }
+
+              return a.position <
+                b.position;
+            });
+
+          if (leaderboard.empty())
+          {
+            ImGui::TextDisabled(
+              "No participants assigned.");
+          }
+          else if (ImGui::BeginTable(
+            "RaceLeaderboard",
+            4,
+            ImGuiTableFlags_Borders |
+            ImGuiTableFlags_RowBg |
+            ImGuiTableFlags_SizingStretchProp))
+          {
+            ImGui::TableSetupColumn(
+              "#",
+              ImGuiTableColumnFlags_WidthFixed,
+              30.f);
+
+            ImGui::TableSetupColumn(
+              "Kart");
+
+            ImGui::TableSetupColumn(
+              "Laps");
+
+            ImGui::TableSetupColumn(
+              "Progress");
+
+            ImGui::TableHeadersRow();
+
+            for (const LeaderboardEntry& entry :
+              leaderboard)
+            {
+              const std::string name =
+                EntityLabel(
+                  registry,
+                  entry.entity);
+
+              ImGui::TableNextRow();
+
+
+              // Position
+              ImGui::TableSetColumnIndex(0);
+
+              if (entry.position > 0)
+              {
+                ImGui::Text(
+                  "%d",
+                  entry.position);
+              }
+              else
+              {
+                ImGui::TextUnformatted("-");
+              }
+
+
+              // Kart
+              ImGui::TableSetColumnIndex(1);
+
+              ImGui::TextUnformatted(
+                name.c_str());
+
+
+              // Laps
+              ImGui::TableSetColumnIndex(2);
+
+              ImGui::Text(
+                "%d",
+                entry.laps);
+
+
+              // Progress
+              ImGui::TableSetColumnIndex(3);
+
+              ImGui::Text(
+                "%.1f%%",
+                entry.progress * 100.f);
+            }
+
+            ImGui::EndTable();
+          }
+
+          // ==============================================
           // Start Race
           // ==============================================
 
@@ -1226,6 +1369,31 @@ namespace ECS {
           else
           {
             ImGui::TextDisabled("Select a Starting Grid.");
+          }
+
+          ImGui::Separator();
+          ImGui::TextUnformatted(
+            "Race Progress");
+
+          ImGui::Text(
+            "Completed Laps: %d",
+            participant->completedLaps);
+
+          ImGui::Text(
+            "Lap Progress: %.1f%%",
+            participant->lapProgress *
+            100.f);
+
+          if (participant->racePosition > 0)
+          {
+            ImGui::Text(
+              "Race Position: %d",
+              participant->racePosition);
+          }
+          else
+          {
+            ImGui::TextDisabled(
+              "Race Position: --");
           }
         }
       }

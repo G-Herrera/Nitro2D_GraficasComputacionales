@@ -105,6 +105,52 @@ namespace Math
     float distance{ 0.f };           // distancia de p a ese punto
   };
 
+  // Resultado de medir dónde se encuentra un punto
+// respecto al recorrido completo de un Path.
+  struct PathProgressResult
+  {
+    // Punto proyectado sobre la línea central.
+    sf::Vector2f nearestPoint{
+        0.f,
+        0.f
+    };
+
+    // Segmento donde cayó la proyección.
+    std::size_t segmentIndex{
+        0
+    };
+
+    // Distancia recorrida desde points[0]
+    // hasta nearestPoint siguiendo la polilínea.
+    float distanceAlongPath{
+        0.f
+    };
+
+    // Longitud total de la polilínea.
+    float totalPathLength{
+        0.f
+    };
+
+    // Progreso normalizado:
+    // 0.0 = salida/meta
+    // 0.5 = mitad de vuelta
+    // 1.0 = casi de regreso a meta
+    float normalizedProgress{
+        0.f
+    };
+  };
+
+  /**
+    * @brief Calcula cuánto ha avanzado un punto a lo largo
+    * de una polilínea.
+    *
+    * El progreso se mide siguiendo los segmentos del path,
+    * no mediante distancia euclidiana.
+    */
+  [[nodiscard]]
+  PathProgressResult ComputePathProgress(const std::vector<sf::Vector2f>& points,
+                                         bool closed, const sf::Vector2f& position) noexcept;
+
   // Recorre todos los segmentos de la polilinea (points) y devuelve el
   // punto mas cercano a p. Si closed=true, incluye el segmento que
   // conecta el ultimo punto con el primero.

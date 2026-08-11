@@ -115,6 +115,80 @@ namespace Math
     return result;
   }
 
+  PathProgressResult ComputePathProgress(const std::vector<sf::Vector2f>& points, 
+                                         bool closed, const sf::Vector2f& position) noexcept
+  {
+    PathProgressResult result;
+
+    if (points.size() < 2)
+    {
+      return result;
+    }
+
+    // --------------------------------------------------
+    // 1. Encontrar dónde está el agente respecto al Path
+    // --------------------------------------------------
+
+    const NearestPathResult nearest = NearestPointOnPath(points, closed, position);
+
+    result.nearestPoint = nearest.point;
+
+    result.segmentIndex = nearest.segmentIndex;
+
+
+    // --------------------------------------------------
+    // 2. Calcular longitud total del Path
+    // --------------------------------------------------
+
+    const std::size_t segmentCount = closed ? points.size() : points.size() - 1;
+
+    float totalLength = 0.f;
+
+    for (std::size_t i = 0; i < segmentCount; ++i)
+    {
+      const std::size_t next = (i + 1) % points.size();
+
+      totalLength += Distance( points[i], points[next]);
+    }
+
+    result.totalPathLength = totalLength;
+
+    if (totalLength <= 0.00001f)
+    {
+      return result;
+    }
+
+
+    // --------------------------------------------------
+    // 3. Sumar segmentos ANTERIORES al actual
+    // --------------------------------------------------
+
+    float distanceAlongPath = 0.f;
+
+    for (std::size_t i = 0; i < nearest.segmentIndex; ++i)
+    {
+      const std::size_t next = (i + 1) % points.size();
+
+      distanceAlongPath += Distance( points[i], points[next]);
+    }
+
+
+    // --------------------------------------------------
+    // 4. Añadir la distancia dentro del segmento actual
+    // --------------------------------------------------
+
+    const sf::Vector2f& segmentStart = points[nearest.segmentIndex];
+
+    distanceAlongPath += Distance( segmentStart, nearest.point);
+
+
+    result.distanceAlongPath = distanceAlongPath;
+
+    result.normalizedProgress = std::clamp( distanceAlongPath / totalLength, 0.f, 1.f);
+
+    return result;
+  }
+
   sf::Vector2f PointAheadOnPath(
     const std::vector<sf::Vector2f>& points, bool closed,
     std::size_t fromSegmentIndex, const sf::Vector2f& fromPoint,
