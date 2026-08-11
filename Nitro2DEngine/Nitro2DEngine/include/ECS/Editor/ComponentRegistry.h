@@ -14,6 +14,8 @@
 #include "ECS/Components/PathEditorComponent.h"
 #include "ECS/Components/DebugPathComponent.h"
 #include "ECS/Components/SteeringDebugComponent.h"
+#include "ECS/Components/StartingGridComponent.h"
+#include "ECS/Components/RaceParticipantComponent.h"
 
 //=========================================================
 // ECS::Editor::ComponentRegistry
@@ -133,6 +135,8 @@ namespace ECS::Editor {
 			Register<PathComponent>("Path");
 			Register<DebugPathComponent>("Path Debug");
 			Register<PathEditorComponent>("Path Editor",{ "Path", "Path Debug"});
+			Register<StartingGridComponent>("Starting Grid");
+			Register<RaceParticipantComponent>("Race Participant");
 			
 			// Transform no se registra porque toda entidad creada desde
 			// EntityFactory ya nace con ese componente y el Inspector

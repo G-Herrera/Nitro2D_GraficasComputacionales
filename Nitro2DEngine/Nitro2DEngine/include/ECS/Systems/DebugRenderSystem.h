@@ -10,6 +10,7 @@ namespace ECS
   struct DebugPathComponent;
   struct Transform;
   struct SteeringDebugComponent;
+  struct StartingGridComponent;
 
   class DebugRenderSystem final : public System
   {
@@ -48,6 +49,9 @@ namespace ECS
 
     void 
     DrawControlPoint(const sf::Vector2f& position, float radius, const sf::Color& color);
+
+    void 
+    DrawStartingGrid(const StartingGridComponent& grid);
 
     Window& m_window;
   };

@@ -15,6 +15,9 @@
 #include "ECS/Components/PathEditorComponent.h"
 #include "ECS/Components/DebugPathComponent.h"
 #include "ECS/PathUtils.h"
+#include "ECS/Components/StartingGridComponent.h"
+#include "ECS/Components/RaceParticipantComponent.h"
+#include "ECS/StartingGridUtils.h"
 
 namespace ECS {
 	class UISystem final : public System
@@ -782,6 +785,229 @@ namespace ECS {
 
 
           ImGui::EndDisabled();
+        }
+      }
+
+      // --- Starting Grid -----------------------------------------
+      if (auto* grid = registry.TryGetComponent<ECS::StartingGridComponent>(selectedEntity))
+      {
+        ImGui::Separator();
+
+        if (ImGui::CollapsingHeader("Starting Grid", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+          bool rebuildGrid = false;
+
+          // ==============================================
+          // Path Entity
+          // ==============================================
+
+          std::string pathPreview = grid->pathEntity == ECS::NULL_ENTITY? "(none)": EntityLabel(registry, grid->pathEntity);
+
+          if (ImGui::BeginCombo("Path Entity", pathPreview.c_str()))
+          {
+            if (ImGui::Selectable("(none)", grid->pathEntity == ECS::NULL_ENTITY))
+            {
+              grid->pathEntity = ECS::NULL_ENTITY;
+
+              grid->slots.clear();
+            }
+
+            for (const EntityID candidate : registry.GetAllEntities())
+            {
+              if (!registry.IsAlive(candidate))
+              {
+                continue;
+              }
+
+              if (!registry.HasComponent<ECS::PathComponent>(candidate))
+              {
+                continue;
+              }
+
+              const std::string label =EntityLabel(registry, candidate);
+
+              const bool selected = candidate == grid->pathEntity;
+
+              if (ImGui::Selectable(label.c_str(), selected))
+              {
+                grid->pathEntity = candidate;
+
+                rebuildGrid = true;
+              }
+            }
+
+            ImGui::EndCombo();
+          }
+
+
+          // ==============================================
+          // Grid parameters
+          // ==============================================
+
+          rebuildGrid |= ImGui::DragInt("Finish Point Index", &grid->anchorPointIndex, 1.f, 0, 100000);
+
+          rebuildGrid |= ImGui::DragFloat("Finish Line Half Width", &grid->lineHalfWidth, 1.f, 5.f, 1000.f);
+
+          rebuildGrid |= ImGui::DragInt("Slot Count", &grid->slotCount, 1.f, 1, 20);
+
+          rebuildGrid |= ImGui::DragFloat("First Row Offset", &grid->firstRowOffset, 1.f, 0.f, 1000.f);
+
+          rebuildGrid |= ImGui::DragFloat("Row Spacing", &grid->rowSpacing, 1.f, 1.f, 500.f);
+
+          rebuildGrid |= ImGui::DragFloat("Column Spacing", &grid->columnSpacing, 1.f, 1.f, 500.f);
+
+          ImGui::Checkbox("Visible##StartingGrid", &grid->visible);
+
+          EditSFMLColor("Finish Line Color", grid->finishLineColor);
+
+          EditSFMLColor("Slot Color", grid->slotColor);
+
+
+          if (rebuildGrid)
+          {
+            ECS::RebuildStartingGrid(registry, *grid);
+          }
+
+          if (grid->pathEntity == ECS::NULL_ENTITY)
+          {
+            ImGui::TextDisabled("Select a Path Entity.");
+          }
+          else
+          {
+            ImGui::Text("Generated Slots: %llu", static_cast<unsigned long long>(grid->slots.size()));
+          }
+
+          if (ImGui::Button("Rebuild Starting Grid"))
+          {
+            ECS::RebuildStartingGrid(registry, *grid);
+          }
+        }
+      }
+
+      // --- Race Participant --------------------------------------
+      if (auto* participant = registry.TryGetComponent<ECS::RaceParticipantComponent>(selectedEntity))
+      {
+        ImGui::Separator();
+
+        if (ImGui::CollapsingHeader("Race Participant", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+          // ==============================================
+          // Starting Grid selector
+          // ==============================================
+
+          std::string gridPreview =
+            participant->startingGridEntity ==
+            ECS::NULL_ENTITY
+            ? "(none)"
+            : EntityLabel(
+              registry,
+              participant->startingGridEntity);
+
+          if (ImGui::BeginCombo("Starting Grid", gridPreview.c_str()))
+          {
+            if (ImGui::Selectable("(none)", participant->startingGridEntity == ECS::NULL_ENTITY))
+            {
+              participant->startingGridEntity = ECS::NULL_ENTITY;
+
+              participant->startingSlot = -1;
+            }
+
+            for (const EntityID candidate : registry.GetAllEntities())
+            {
+              if (!registry.IsAlive(candidate))
+              {
+                continue;
+              }
+
+              if (!registry.HasComponent<ECS::StartingGridComponent>(candidate))
+              {
+                continue;
+              }
+
+              const std::string label =EntityLabel(registry, candidate);
+
+              const bool selected = participant->startingGridEntity == candidate;
+
+              if (ImGui::Selectable(label.c_str(), selected))
+              {
+                participant->startingGridEntity = candidate;
+
+                participant->startingSlot = -1;
+              }
+            }
+
+            ImGui::EndCombo();
+          }
+
+
+          // ==============================================
+          // Starting Position
+          // ==============================================
+
+          if (participant->startingGridEntity !=
+            ECS::NULL_ENTITY &&
+            registry.IsAlive(
+              participant->
+              startingGridEntity))
+          {
+            auto* grid = registry.TryGetComponent<ECS::StartingGridComponent>(participant->startingGridEntity);
+
+            if (grid && !grid->slots.empty())
+            {
+              const std::string slotPreview =
+                participant->startingSlot >= 0
+                ? "Slot " +
+                std::to_string(
+                  participant->
+                  startingSlot + 1)
+                : "(none)";
+
+              if (ImGui::BeginCombo("Starting Position", slotPreview.c_str()))
+              {
+                if (ImGui::Selectable("(none)", participant->startingSlot < 0))
+                {
+                  participant->startingSlot = -1;
+                }
+
+                for (std::size_t i = 0; i < grid->slots.size(); ++i)
+                {
+                  const std::string label = "Slot " + std::to_string(i + 1);
+
+                  const bool selected = participant->startingSlot == static_cast<int>(i);
+
+                  if (ImGui::Selectable(label.c_str(), selected))
+                  {
+                    participant->startingSlot = static_cast<int>(i);
+
+                    // ==========================
+                    // SNAP AUTOMÁTICO
+                    // ==========================
+
+                    auto* transform = registry.TryGetComponent<ECS::Transform>(selectedEntity);
+
+                    if (transform)
+                    {
+                      const StartingGridSlot& slot =grid->slots[i];
+
+                      transform->position = slot.position;
+
+                      transform->rotation = slot.rotation;
+                    }
+                  }
+                }
+
+                ImGui::EndCombo();
+              }
+            }
+            else
+            {
+              ImGui::TextDisabled("Starting Grid has no slots.");
+            }
+          }
+          else
+          {
+            ImGui::TextDisabled("Select a Starting Grid.");
+          }
         }
       }
 

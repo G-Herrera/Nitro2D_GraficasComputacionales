@@ -5,6 +5,7 @@
 #include "ECS/Components/DebugPathComponent.h"
 #include "ECS/Components/Transform.h"
 #include "ECS/Components/SteeringDebugComponent.h"
+#include "ECS/Components/StartingGridComponent.h"
 #include "Modules/Math2D.h"
 
 namespace ECS
@@ -56,33 +57,49 @@ namespace ECS
     // ======================================================
 
     registry.GetView<PathComponent, PathEditorComponent>().Each(
-        [this](
-          EntityID entity,
-          PathComponent& path,
-          PathEditorComponent& editor)
+      [this](
+        EntityID entity,
+        PathComponent& path,
+        PathEditorComponent& editor)
+      {
+        (void)entity;
+
+        if (!editor.enabled) return;
+
+        if (!editor.showControlPoints) return;
+
+        for (std::size_t i = 0; i < path.controlPoints.size(); ++i)
         {
-          (void)entity;
+          const bool selected = editor.selectedControlPoint >= 0 && static_cast<std::size_t>(
+            editor.selectedControlPoint) == i;
 
-          if (!editor.enabled) return;
+          const sf::Color color = selected ? sf::Color::Magenta : sf::Color::White;
 
-          if (!editor.showControlPoints) return;
+          float radius = editor.controlPointDrawRadius;
 
-          for (std::size_t i = 0;i < path.controlPoints.size();++i)
-          {
-            const bool selected = editor.selectedControlPoint >= 0 && static_cast<std::size_t>(
-                editor.selectedControlPoint) == i;
+          // El seleccionado se dibuja ligeramente
+          // más grande para que sea identificable.
+          if (selected) radius *= 1.5f;
 
-            const sf::Color color = selected ? sf::Color::Magenta : sf::Color::White;
+          DrawControlPoint(path.controlPoints[i], radius, color);
+        }
+      });
 
-            float radius = editor.controlPointDrawRadius;
+    registry.GetView<StartingGridComponent>().Each(
+      [this](
+        EntityID entity,
+        StartingGridComponent& grid)
+      {
+        (void)entity;
 
-            // El seleccionado se dibuja ligeramente
-            // más grande para que sea identificable.
-            if (selected) radius *= 1.5f;
+        if (!grid.visible)
+        {
+          return;
+        }
 
-            DrawControlPoint(path.controlPoints[i], radius, color);
-          }
-        });
+        DrawStartingGrid(
+          grid);
+      });
   }
 
   void
@@ -379,7 +396,7 @@ namespace ECS
   }
 
   void
-  DebugRenderSystem::DrawControlPoint(const sf::Vector2f& position, float radius, const sf::Color& color)
+    DebugRenderSystem::DrawControlPoint(const sf::Vector2f& position, float radius, const sf::Color& color)
   {
     if (!m_window.m_window) return;
 
@@ -387,7 +404,7 @@ namespace ECS
 
     sf::CircleShape point(radius);
 
-    point.setOrigin({radius, radius});
+    point.setOrigin({ radius, radius });
 
     point.setPosition(position);
 
@@ -398,5 +415,36 @@ namespace ECS
     point.setOutlineColor(sf::Color::Black);
 
     m_window.m_window->draw(point);
+  }
+
+  void
+  DebugRenderSystem::DrawStartingGrid(const StartingGridComponent& grid)
+  {
+    // ----------------------------------------------
+    // Línea de salida/meta
+    // ----------------------------------------------
+
+    DrawLine(grid.finishLineStart, grid.finishLineEnd, grid.finishLineColor);
+
+    // Segunda línea paralela para hacerla
+    // visualmente más reconocible.
+    const sf::Vector2f offset = grid.forward * 4.f;
+
+    DrawLine(grid.finishLineStart + offset, grid.finishLineEnd + offset, grid.finishLineColor);
+
+    // ----------------------------------------------
+    // Slots
+    // ----------------------------------------------
+
+    for (std::size_t i = 0; i < grid.slots.size(); ++i)
+    {
+      const StartingGridSlot& slot = grid.slots[i];
+
+      DrawPoint(slot.position, 8.f, grid.slotColor);
+
+      // Pequeña línea que indica hacia dónde
+      // arrancará el kart.
+      DrawLine(slot.position, slot.position + grid.forward * 25.f, grid.slotColor);
+    }
   }
 }

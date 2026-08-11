@@ -192,7 +192,9 @@
     <ClInclude Include="include\ECS\Components\Obstacle.h" />
     <ClInclude Include="include\ECS\Components\PathComponent.h" />
     <ClInclude Include="include\ECS\Components\PathEditorComponent.h" />
+    <ClInclude Include="include\ECS\Components\RaceParticipantComponent.h" />
     <ClInclude Include="include\ECS\Components\Render.h" />
+    <ClInclude Include="include\ECS\Components\StartingGridComponent.h" />
     <ClInclude Include="include\ECS\Components\SteeringComponent.h" />
     <ClInclude Include="include\ECS\Components\SteeringDebugComponent.h" />
     <ClInclude Include="include\ECS\Components\Transform.h" />
@@ -202,6 +204,7 @@
     <ClInclude Include="include\ECS\PathUtils.h" />
     <ClInclude Include="include\ECS\Registry.h" />
     <ClInclude Include="include\ECS\SparseSet.h" />
+    <ClInclude Include="include\ECS\StartingGridUtils.h" />
     <ClInclude Include="include\ECS\System.h" />
     <ClInclude Include="include\ECS\Systems\CameraSystem.h" />
     <ClInclude Include="include\ECS\Systems\DebugRenderSystem.h" />
