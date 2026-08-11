@@ -292,6 +292,64 @@ namespace ECS {
         ImGui::EndPopup();
       }
 
+      ImGui::SameLine();
+
+      if (ImGui::Button("- Remove Component"))
+      {
+        ImGui::OpenPopup("RemoveComponentPopup");
+      }
+
+
+      if (ImGui::BeginPopup("RemoveComponentPopup"))
+      {
+        auto& componentRegistry = ECS::Editor::ComponentRegistry::Instance();
+
+        bool foundComponent = false;
+
+        for (const auto& info : componentRegistry.GetTypes())
+        {
+          // Solo mostrar componentes que realmente
+          // estén presentes en la entidad.
+          if (!info.hasComponent(registry, selectedEntity)) continue;
+
+          foundComponent = true;
+
+          std::string blockedBy;
+
+          const bool canRemove =componentRegistry.CanRemove(registry,
+                                                            selectedEntity,
+                                                            info,
+                                                            &blockedBy);
+
+          ImGui::BeginDisabled(!canRemove);
+
+          if (ImGui::Selectable(info.name.c_str()))
+          {
+            info.removeComponent(registry, selectedEntity);
+
+            ImGui::CloseCurrentPopup();
+          }
+
+          ImGui::EndDisabled();
+
+
+          // Explicar por qué está bloqueado.
+          if (!canRemove && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+          {
+            ImGui::SetTooltip("Required by: %s", blockedBy.c_str());
+          }
+        }
+
+
+        if (!foundComponent)
+        {
+          ImGui::TextDisabled("No removable components.");
+        }
+
+
+        ImGui::EndPopup();
+      }
+
       ImGui::Separator();
 
       // --- Name --------------------------------------------------

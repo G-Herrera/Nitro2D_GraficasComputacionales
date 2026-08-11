@@ -13,6 +13,7 @@
 #include "ECS/Components/PathComponent.h"
 #include "ECS/Components/PathEditorComponent.h"
 #include "ECS/Components/DebugPathComponent.h"
+#include "ECS/Components/SteeringDebugComponent.h"
 
 //=========================================================
 // ECS::Editor::ComponentRegistry
@@ -35,56 +36,99 @@ namespace ECS::Editor {
 
 	struct ComponentTypeInfo {
 		std::string name;
+		// Dependencias necesarias para que el componente
+		// pueda funcionar correctamente.
+		std::vector<std::string> requiredComponents;
 		std::function<bool(Registry&, EntityID)> hasComponent;
 		std::function<void(Registry&, EntityID)> addComponent;
+		std::function<void(Registry&, EntityID)> removeComponent;
 	};
 
-	class 
-	ComponentRegistry {
+	class
+		ComponentRegistry {
 	public:
 		/**
 			* @brief Devuelve la instancia singleton de ComponentRegistry.
-			* 
+			*
 			* @return ComponentRegistry& Referencia a la instancia singleton de ComponentRegistry.
 			*/
-		static ComponentRegistry& 
-		Instance() {
+		static ComponentRegistry&
+			Instance() {
 			static ComponentRegistry instance;
 			return instance;
 		}
 
 		/**
 			* @brief Devuelve la lista de tipos de componentes registrados.
-			* 
+			*
 			* @return const std::vector<ComponentTypeInfo>& Referencia constante a la lista de tipos de componentes registrados.
 			*/
 		[[nodiscard]] const std::vector<ComponentTypeInfo>&
-		GetTypes() const noexcept { return m_types; }
+			GetTypes() const noexcept { return m_types; }
+
+		/**
+			* @brief Comprueba si un componente puede eliminarse
+			* sin romper dependencias de otros componentes presentes.
+			*/
+		[[nodiscard]] bool
+		CanRemove(Registry& registry,EntityID entity,const ComponentTypeInfo& candidate,
+							std::string* blockedBy = nullptr) const
+		{
+			for (const auto& type : m_types)
+			{
+				// El componente dependiente ni siquiera existe.
+				if (!type.hasComponent(registry, entity)) continue;
+
+				for (const std::string& requirement : type.requiredComponents)
+				{
+					if (requirement == candidate.name)
+					{
+						if (blockedBy)
+						{
+							*blockedBy = type.name;
+						}
+
+						return false;
+					}
+				}
+			}
+
+			return true;
+		}
 
 	private:
 		ComponentRegistry() {
-			RegisterCustom("Render",
+			RegisterCustom(
+				"Render",
 
-				// ¿La entidad ya tiene Render?
+				// HAS
 				[](Registry& registry, EntityID entity)
 				{
 					return registry.HasComponent<Render>(entity);
 				},
 
-				// ¿Cómo se construye Render desde el editor?
+				// ADD
 				[](Registry& registry, EntityID entity)
 				{
 					if (registry.HasComponent<Render>(entity)) return;
 
-					Render render = Render::Make(RECTANGLE, sf::Color::White);
+					registry.AddComponent<Render>(entity, Render::Make(RECTANGLE, sf::Color::White));
+				},
 
-					registry.AddComponent<Render>(entity, std::move(render));
+				// REMOVE
+				[](Registry& registry, EntityID entity)
+				{
+					if (registry.HasComponent<Render>(entity))
+					{
+						registry.RemoveComponent<Render>(entity);
+					}
 				});
 			Register<Velocity>("Velocity");
 			Register<Acceleration>("Acceleration");
 			Register<Obstacle>("Obstacle");
 			Register<Camera>("Camera");
 			Register<SteeringComponent>("Steering Component", { "Velocity", "Acceleration" });
+			Register<SteeringDebugComponent>("Steering Debug", { "Steering Component" });
 			Register<Name>("Name");
 			Register<PathComponent>("Path");
 			Register<DebugPathComponent>("Path Debug");
@@ -105,28 +149,71 @@ namespace ECS::Editor {
 			* @note Este método se utiliza internamente en el constructor de ComponentRegistry para registrar los tipos de componentes disponibles en el editor.
 			* @note Los componentes requeridos se agregarán automáticamente si no están presentes al agregar este componente.
 			*/
-		template<typename T> void 
-		Register(std::string name, std::vector<std::string> requiredNames = {}) {
+		template<typename T>void 
+		Register(std::string name, std::vector<std::string> requiredNames = {})
+		{
 			ComponentTypeInfo info;
+
 			info.name = std::move(name);
 
-			info.hasComponent = [](Registry& registry, EntityID entity) {
-				return registry.HasComponent<T>(entity);
+			// Conservamos las dependencias como metadatos.
+			info.requiredComponents = requiredNames;
+
+
+			// --------------------------------------------------
+			// HAS
+			// --------------------------------------------------
+
+			info.hasComponent = [](Registry& registry, EntityID entity)
+				{
+					return registry.HasComponent<T>(entity);
 				};
 
-			info.addComponent = [this, requiredNames](Registry& registry, EntityID entity) {
-				// Añade primero las dependencias que falten
-				for (const auto& reqName : requiredNames) {
-					for (auto& type : m_types) {
-						if (type.name == reqName && !type.hasComponent(registry, entity)) {
-							type.addComponent(registry, entity);
+
+			// --------------------------------------------------
+			// ADD
+			// --------------------------------------------------
+
+			info.addComponent = [this, requiredNames](Registry& registry, EntityID entity)
+				{
+					// Primero agregar las dependencias.
+					for (const auto& reqName : requiredNames)
+					{
+						for (auto& type : m_types)
+						{
+							if (type.name != reqName)
+							{
+								continue;
+							}
+
+							if (!type.hasComponent(registry, entity))
+							{
+								type.addComponent(registry, entity);
+							}
+
+							break;
 						}
 					}
-				}
-				if (!registry.HasComponent<T>(entity)) {
-					registry.AddComponent<T>(entity);
-				}
+
+					if (!registry.HasComponent<T>(entity))
+					{
+						registry.AddComponent<T>(entity);
+					}
 				};
+
+
+			// --------------------------------------------------
+			// REMOVE
+			// --------------------------------------------------
+
+			info.removeComponent = [](Registry& registry, EntityID entity)
+				{
+					if (registry.HasComponent<T>(entity))
+					{
+						registry.RemoveComponent<T>(entity);
+					}
+				};
+
 
 			m_types.push_back(std::move(info));
 		}
@@ -146,15 +233,21 @@ namespace ECS::Editor {
 		void RegisterCustom(
 			std::string name,
 			std::function<bool(Registry&, EntityID)> hasComponent,
-			std::function<void(Registry&, EntityID)> addComponent)
+			std::function<void(Registry&, EntityID)> addComponent,
+			std::function<void(Registry&, EntityID)> removeComponent,
+			std::vector<std::string> requiredNames = {})
 		{
 			ComponentTypeInfo info;
 
 			info.name = std::move(name);
 
+			info.requiredComponents = std::move(requiredNames);
+
 			info.hasComponent = std::move(hasComponent);
 
 			info.addComponent = std::move(addComponent);
+
+			info.removeComponent = std::move(removeComponent);
 
 			m_types.push_back(std::move(info));
 		}
