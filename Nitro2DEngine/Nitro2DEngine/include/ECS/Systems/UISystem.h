@@ -18,6 +18,9 @@
 #include "ECS/Components/StartingGridComponent.h"
 #include "ECS/Components/RaceParticipantComponent.h"
 #include "ECS/StartingGridUtils.h"
+#include "ECS/Components/RaceManagerComponent.h"
+#include "ECS/Components/MovementControlComponent.h"
+#include "ECS/RaceUtils.h"
 
 namespace ECS {
 	class UISystem final : public System
@@ -788,6 +791,178 @@ namespace ECS {
         }
       }
 
+      // --- Race Manager -----------------------------------------
+      if (auto* race = registry.TryGetComponent<ECS::RaceManagerComponent>(selectedEntity))
+      {
+        ImGui::Separator();
+
+        if (ImGui::CollapsingHeader("Race Manager", ImGuiTreeNodeFlags_DefaultOpen))
+        {
+          // ==============================================
+          // Current State
+          // ==============================================
+
+          const char* stateLabel = "Unknown";
+
+          switch (race->state)
+          {
+          case ECS::RaceState::Waiting:
+            stateLabel = "Waiting";
+            break;
+             
+          case ECS::RaceState::Racing:
+            stateLabel = "Racing";
+            break;
+
+          case ECS::RaceState::Finished:
+            stateLabel = "Finished";
+            break;
+          }
+
+          ImGui::Text("State: %s", stateLabel);
+
+
+          // ==============================================
+          // Starting Grid selector
+          // ==============================================
+
+          std::string gridPreview =
+            race->startingGridEntity ==
+            ECS::NULL_ENTITY
+            ? "(none)"
+            : EntityLabel(
+              registry,
+              race->startingGridEntity);
+
+          if (ImGui::BeginCombo("Starting Grid", gridPreview.c_str()))
+          {
+            if (ImGui::Selectable("(none)", race->startingGridEntity == ECS::NULL_ENTITY))
+            {
+              race->startingGridEntity = ECS::NULL_ENTITY;
+            }
+
+            for (const EntityID candidate : registry.GetAllEntities())
+            {
+              if (!registry.IsAlive(candidate))
+              {
+                continue;
+              }
+
+              if (!registry.HasComponent<ECS::StartingGridComponent>(candidate))
+              {
+                continue;
+              }
+
+              const std::string label =EntityLabel(registry, candidate);
+
+              const bool selected = candidate == race->startingGridEntity;
+
+              if (ImGui::Selectable(label.c_str(), selected))
+              {
+                race->startingGridEntity = candidate;
+              }
+            }
+
+            ImGui::EndCombo();
+          }
+
+          // ==============================================
+          // Randomization
+          // ==============================================
+
+          ImGui::Separator();
+          ImGui::TextUnformatted("Kart Randomization");
+
+          ImGui::DragFloat("Min Speed", &race->minRandomSpeed, 1.f, 0.f, 1000.f);
+
+          ImGui::DragFloat("Max Speed", &race->maxRandomSpeed, 1.f, 0.f, 1000.f);
+
+					// Permitimos randomizar solo si la carrera no ha terminado, para evitar inconsistencias.
+          const bool canRandomize = race->state != ECS::RaceState::Finished;
+
+          ImGui::BeginDisabled(!canRandomize);
+
+          if (ImGui::Button("RANDOMIZE KARTS", ImVec2(-1.f, 32.f)))
+          {
+            ECS::RandomizeRaceParticipants(registry,selectedEntity);
+          }
+
+          ImGui::EndDisabled();
+
+          ImGui::Separator();
+          ImGui::TextUnformatted("Participants");
+
+          int participantCount = 0;
+
+          registry
+            .GetView<
+            ECS::RaceParticipantComponent,
+            ECS::SteeringComponent>()
+            .Each(
+              [&](ECS::EntityID entity,
+                ECS::RaceParticipantComponent& participant,
+                ECS::SteeringComponent& steering)
+              {
+                if (participant.raceManagerEntity !=
+                  selectedEntity)
+                {
+                  return;
+                }
+
+                ++participantCount;
+
+                const std::string label =
+                  EntityLabel(
+                    registry,
+                    entity);
+
+                ImGui::Text(
+                  "%s  -  Max Speed: %.1f",
+                  label.c_str(),
+                  steering.maxSpeed);
+              });
+
+          if (participantCount == 0)
+          {
+            ImGui::TextDisabled(
+              "No participants assigned.");
+          }
+
+          // ==============================================
+          // Start Race
+          // ==============================================
+
+          ImGui::Separator();
+
+          if (race->state == ECS::RaceState::Waiting)
+          {
+            const bool canStart = race->startingGridEntity != ECS::NULL_ENTITY;
+
+            ImGui::BeginDisabled(!canStart);
+
+            if (ImGui::Button("START RACE", ImVec2(-1.f, 40.f)))
+            {
+              race->state = ECS::RaceState::Racing;
+            }
+
+            ImGui::EndDisabled();
+
+            if (!canStart)
+            {
+              ImGui::TextDisabled("Select a Starting Grid before starting.");
+            }
+          }
+          else if (race->state == ECS::RaceState::Racing)
+          {
+            ImGui::TextColored(ImVec4( 0.2f, 1.f, 0.4f, 1.f), "Race in progress");
+          }
+          else
+          {
+            ImGui::Text("Race finished");
+          }
+        }
+      }
+
       // --- Starting Grid -----------------------------------------
       if (auto* grid = registry.TryGetComponent<ECS::StartingGridComponent>(selectedEntity))
       {
@@ -891,6 +1066,50 @@ namespace ECS {
 
         if (ImGui::CollapsingHeader("Race Participant", ImGuiTreeNodeFlags_DefaultOpen))
         {
+          // ==============================================
+          // Race Manager
+          // ==============================================
+
+          std::string racePreview =
+            participant->raceManagerEntity ==
+            ECS::NULL_ENTITY
+            ? "(none)"
+            : EntityLabel(
+              registry,
+              participant->raceManagerEntity);
+
+          if (ImGui::BeginCombo("Race Manager", racePreview.c_str()))
+          {
+            if (ImGui::Selectable("(none)", participant->raceManagerEntity == ECS::NULL_ENTITY))
+            {
+              participant->raceManagerEntity = ECS::NULL_ENTITY;
+            }
+
+            for (const EntityID candidate : registry.GetAllEntities())
+            {
+              if (!registry.IsAlive(candidate))
+              {
+                continue;
+              }
+
+              if (!registry.HasComponent<ECS::RaceManagerComponent>(candidate))
+              {
+                continue;
+              }
+
+              const std::string label = EntityLabel(registry, candidate);
+
+              const bool selected = participant->raceManagerEntity == candidate;
+
+              if (ImGui::Selectable(label.c_str(), selected))
+              {
+                participant->raceManagerEntity = candidate;
+              }
+            }
+
+            ImGui::EndCombo();
+          }
+
           // ==============================================
           // Starting Grid selector
           // ==============================================

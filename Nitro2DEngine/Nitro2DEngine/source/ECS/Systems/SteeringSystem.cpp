@@ -7,6 +7,7 @@
 #include "ECS/Components/Obstacle.h"
 #include "Modules/Math2D.h"
 #include "ECS/Components/PathComponent.h"
+#include "ECS/Components/MovementControlComponent.h"
 #include <cmath>
 #include <random>
 
@@ -343,12 +344,41 @@ namespace ECS {
 				SteeringComponent& steer) {
 
 					SteeringDebugComponent* debug = registry.TryGetComponent<SteeringDebugComponent>(entity);
-
+					MovementControlComponent* movement = registry.TryGetComponent<MovementControlComponent>(entity);
+					
 					if (debug)
 					{
 						// Evitar que permanezca una fuerza del frame anterior
 						// cuando ya no existen vecinos cercanos.
 						debug->separationForce = { 0.f, 0.f };
+					}
+
+					// ==================================================
+					// Movement Gate
+					//
+					// Si la entidad tiene MovementControlComponent y
+					// está deshabilitado, Steering no debe calcular
+					// ni integrar movimiento este frame.
+					// ==================================================
+
+					if (movement && !movement->enabled)
+					{
+						accel.acceleration = { 0.f, 0.f };
+
+						vel.velocity = { 0.f, 0.f };
+
+						if (debug)
+						{
+							debug->velocity = { 0.f, 0.f };
+
+							debug->pathFollowingForce = { 0.f, 0.f };
+
+							debug->separationForce = { 0.f, 0.f };
+
+							debug->finalSteeringForce = { 0.f, 0.f };
+						}
+
+						return;
 					}
 
 					const bool anyBehaviorEnabled =

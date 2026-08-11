@@ -7,6 +7,11 @@ namespace ECS
 {
   struct RaceParticipantComponent
   {
+    // Carrera a la que pertenece este participante.
+    EntityID raceManagerEntity{
+        NULL_ENTITY
+    };
+
     // Parrilla a la que pertenece.
     EntityID startingGridEntity{
         NULL_ENTITY

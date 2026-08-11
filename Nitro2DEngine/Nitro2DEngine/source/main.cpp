@@ -22,6 +22,7 @@
 #include "ECS/Systems/SteeringSystem.h"
 #include "ECS/Systems/PathEditorSystem.h"
 #include "ECS/Systems/DebugRenderSystem.h"
+#include "ECS/Systems/RaceSystem.h"
 
 
 
@@ -52,6 +53,7 @@ void destroy() {
 int main()
 {
   //Registro de sistemas en el ECS
+  registry.AddSystem<ECS::RaceSystem>();
   registry.AddSystem<ECS::SteeringSystem>();
   registry.AddSystem<ECS::CameraSystem>(g_window);
   registry.AddSystem<ECS::PathEditorSystem>(g_window);

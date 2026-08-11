@@ -177,6 +177,7 @@
     <ClCompile Include="source\Core\Window.cpp" />
     <ClCompile Include="source\ECS\Systems\DebugRenderSystem.cpp" />
     <ClCompile Include="source\ECS\Systems\PathEditorSystem.cpp" />
+    <ClCompile Include="source\ECS\Systems\RaceSystem.cpp" />
     <ClCompile Include="source\ECS\Systems\SteeringSystem.cpp" />
     <ClCompile Include="source\main.cpp" />
     <ClCompile Include="source\Modules\Math2D.cpp" />
@@ -188,10 +189,12 @@
     <ClInclude Include="include\ECS\Components\Acceleration.h" />
     <ClInclude Include="include\ECS\Components\Camera.h" />
     <ClInclude Include="include\ECS\Components\DebugPathComponent.h" />
+    <ClInclude Include="include\ECS\Components\MovementControlComponent.h" />
     <ClInclude Include="include\ECS\Components\Name.h" />
     <ClInclude Include="include\ECS\Components\Obstacle.h" />
     <ClInclude Include="include\ECS\Components\PathComponent.h" />
     <ClInclude Include="include\ECS\Components\PathEditorComponent.h" />
+    <ClInclude Include="include\ECS\Components\RaceManagerComponent.h" />
     <ClInclude Include="include\ECS\Components\RaceParticipantComponent.h" />
     <ClInclude Include="include\ECS\Components\Render.h" />
     <ClInclude Include="include\ECS\Components\StartingGridComponent.h" />
@@ -202,6 +205,7 @@
     <ClInclude Include="include\ECS\Editor\ComponentRegistry.h" />
     <ClInclude Include="include\ECS\EntityFactory.h" />
     <ClInclude Include="include\ECS\PathUtils.h" />
+    <ClInclude Include="include\ECS\RaceUtils.h" />
     <ClInclude Include="include\ECS\Registry.h" />
     <ClInclude Include="include\ECS\SparseSet.h" />
     <ClInclude Include="include\ECS\StartingGridUtils.h" />
@@ -209,6 +213,7 @@
     <ClInclude Include="include\ECS\Systems\CameraSystem.h" />
     <ClInclude Include="include\ECS\Systems\DebugRenderSystem.h" />
     <ClInclude Include="include\ECS\Systems\PathEditorSystem.h" />
+    <ClInclude Include="include\ECS\Systems\RaceSystem.h" />
     <ClInclude Include="include\ECS\Systems\RenderSystem.h" />
     <ClInclude Include="include\ECS\Systems\SteeringSystem.h" />
     <ClInclude Include="include\ECS\Systems\UISystem.h" />
